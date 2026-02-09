@@ -61,8 +61,8 @@ const ActivityCard = ({ activity, onReact }: { activity: ActivityItem; onReact: 
                 key={emoji}
                 onClick={() => onReact(emoji)}
                 className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 transition-colors ${userReactions.includes(emoji)
-                    ? "bg-primary/20 text-primary"
-                    : "bg-muted hover:bg-muted/80"
+                  ? "bg-primary/20 text-primary"
+                  : "bg-muted hover:bg-muted/80"
                   }`}
               >
                 {emoji} {count}
@@ -133,6 +133,77 @@ const CircleCard = ({ circle, onClick, memberCount }: { circle: Circle; onClick:
   );
 };
 
+const MembersList = ({
+  circleId,
+  getCircleMembers,
+}: {
+  circleId: string;
+  getCircleMembers: (id: string) => Promise<import("@/hooks/useCircles").CircleMember[]>;
+}) => {
+  const [members, setMembers] = useState<import("@/hooks/useCircles").CircleMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getCircleMembers(circleId).then((data) => {
+      setMembers(data);
+      setLoading(false);
+    });
+  }, [circleId, getCircleMembers]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-3"
+    >
+      {members.map((member, index) => (
+        <div
+          key={member.id}
+          className="bg-card rounded-xl p-3 border border-border/50 flex items-center gap-3 hover:bg-muted/30 transition-colors"
+        >
+          <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold shadow-sm">
+            {member.profiles?.display_name?.[0] || "?"}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm truncate">{member.profiles?.display_name}</span>
+              {index === 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 font-bold border border-yellow-500/20">
+                  Leader
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Joined {formatDistanceToNow(new Date(member.joined_at), { addSuffix: true })}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="flex items-center justify-end gap-1 text-xs font-medium text-orange-500">
+                <span>{member.profiles?.streak_days || 0}</span>
+                <span>🔥</span>
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                Lvl {member.profiles?.level || 1}
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </motion.div>
+  );
+};
+
 const CirclesPage = () => {
   const { user } = useAuth();
   const { circles, isLoading, createCircle, joinCircle, getCircleMembers } = useCircles();
@@ -192,10 +263,13 @@ const CirclesPage = () => {
           </Button>
         </div>
 
-        {/* Activity Feed */}
-        <div>
-          <h3 className="font-bold mb-3">Activity Feed</h3>
-          <div className="space-y-3">
+        <Tabs defaultValue="activity" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+            <TabsTrigger value="members">Members</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="activity" className="space-y-3">
             {activities.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <MessageCircle className="w-10 h-10 mx-auto mb-2 opacity-50" />
@@ -207,8 +281,12 @@ const CirclesPage = () => {
                 <ActivityCard key={a.id} activity={a} onReact={(emoji) => handleReact(a.id, emoji)} />
               ))
             )}
-          </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="members" className="space-y-3">
+            <MembersList circleId={selectedCircle.id} getCircleMembers={getCircleMembers} />
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }
