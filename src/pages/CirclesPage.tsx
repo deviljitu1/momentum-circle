@@ -60,11 +60,10 @@ const ActivityCard = ({ activity, onReact }: { activity: ActivityItem; onReact: 
               <button
                 key={emoji}
                 onClick={() => onReact(emoji)}
-                className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 transition-colors ${
-                  userReactions.includes(emoji)
+                className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 transition-colors ${userReactions.includes(emoji)
                     ? "bg-primary/20 text-primary"
                     : "bg-muted hover:bg-muted/80"
-                }`}
+                  }`}
               >
                 {emoji} {count}
               </button>
@@ -138,7 +137,6 @@ const CirclesPage = () => {
   const { user } = useAuth();
   const { circles, isLoading, createCircle, joinCircle, getCircleMembers } = useCircles();
   const [selectedCircle, setSelectedCircle] = useState<Circle | null>(null);
-  const [memberCounts, setMemberCounts] = useState<Record<string, number>>({});
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -146,14 +144,6 @@ const CirclesPage = () => {
   const [inviteCode, setInviteCode] = useState("");
 
   const { activities, addReaction } = useActivityFeed(selectedCircle?.id);
-
-  // Fetch member counts
-  useEffect(() => {
-    circles.forEach(async (circle) => {
-      const members = await getCircleMembers(circle.id);
-      setMemberCounts((prev) => ({ ...prev, [circle.id]: members.length }));
-    });
-  }, [circles, getCircleMembers]);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -183,7 +173,7 @@ const CirclesPage = () => {
           </button>
           <div className="flex-1">
             <h1 className="text-xl font-extrabold">{selectedCircle.name}</h1>
-            <p className="text-sm text-muted-foreground">{memberCounts[selectedCircle.id] || 0} members</p>
+            <p className="text-sm text-muted-foreground">{selectedCircle.member_count || 0} members</p>
           </div>
         </motion.div>
 
@@ -312,7 +302,7 @@ const CirclesPage = () => {
               key={circle.id}
               circle={circle}
               onClick={() => setSelectedCircle(circle)}
-              memberCount={memberCounts[circle.id] || 0}
+              memberCount={circle.member_count || 0}
             />
           ))}
         </div>
