@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
+import { CircleChat } from "@/components/CircleChat";
 
 const reactionEmojis = ["🔥", "💪", "👏", "🎉", "❤️", "🚀"];
 
@@ -264,9 +264,10 @@ const CirclesPage = () => {
         </div>
 
         <Tabs defaultValue="activity" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="activity">Activity</TabsTrigger>
             <TabsTrigger value="members">Members</TabsTrigger>
+            <TabsTrigger value="chat">Chat</TabsTrigger>
           </TabsList>
 
           <TabsContent value="activity" className="space-y-3">
@@ -285,6 +286,10 @@ const CirclesPage = () => {
 
           <TabsContent value="members" className="space-y-3">
             <MembersList circleId={selectedCircle.id} getCircleMembers={getCircleMembers} />
+          </TabsContent>
+
+          <TabsContent value="chat" className="space-y-3">
+            <CircleChat circleId={selectedCircle.id} />
           </TabsContent>
         </Tabs>
       </div>
