@@ -1,19 +1,33 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Crown } from "lucide-react";
+import { Crown, Loader2 } from "lucide-react";
 import { LeaderboardItem } from "@/components/LeaderboardItem";
-import { mockLeaderboard } from "@/lib/mockData";
+import { useLeaderboard } from "@/hooks/useLeaderboard";
+import { useAuth } from "@/contexts/AuthContext";
 
 const LeaderboardPage = () => {
   const [period, setPeriod] = useState<"daily" | "weekly">("daily");
-  const sorted = [...mockLeaderboard].sort((a, b) => b.points - a.points);
-  const maxPoints = sorted[0]?.points || 1;
+  const { leaderboard, isLoading } = useLeaderboard(undefined, period);
+  const { user } = useAuth();
+
+  const maxPoints = leaderboard[0]?.total_points || 1;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const top3 = leaderboard.slice(0, 3);
+  const podiumOrder = top3.length === 3 ? [top3[1], top3[0], top3[2]] : top3;
 
   return (
     <div className="pb-24 px-4 pt-6 max-w-lg mx-auto space-y-5">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <h1 className="text-2xl font-extrabold">Leaderboard</h1>
-        <p className="text-sm text-muted-foreground">Compete with your circle</p>
+        <p className="text-sm text-muted-foreground">Compete with your friends</p>
       </motion.div>
 
       {/* Period Toggle */}
@@ -31,51 +45,81 @@ const LeaderboardPage = () => {
         ))}
       </div>
 
-      {/* Top 3 Podium */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex items-end justify-center gap-3 pt-4 pb-2"
-      >
-        {[sorted[1], sorted[0], sorted[2]].map((user, i) => {
-          if (!user) return null;
-          const heights = [80, 100, 64];
-          const sizes = ["w-14 h-14", "w-18 h-18", "w-12 h-12"];
-          const actualRank = i === 0 ? 2 : i === 1 ? 1 : 3;
-          return (
+      {leaderboard.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <p className="text-4xl mb-2">🏆</p>
+          <p className="font-medium">No rankings yet</p>
+          <p className="text-sm">Complete tasks and focus sessions to earn points!</p>
+        </div>
+      ) : (
+        <>
+          {/* Top 3 Podium */}
+          {top3.length >= 3 && (
             <motion.div
-              key={user.id}
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 + i * 0.1 }}
-              className="flex flex-col items-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="flex items-end justify-center gap-3 pt-4 pb-2"
             >
-              <div className={`relative ${i === 1 ? "w-[72px] h-[72px]" : "w-14 h-14"} rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-bold text-lg mb-2`}>
-                {user.name[0]}
-                {actualRank === 1 && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Crown className="w-5 h-5 text-warning fill-warning" />
-                  </div>
-                )}
-              </div>
-              <span className="text-xs font-semibold truncate max-w-[70px] text-center">{user.name}</span>
-              <span className="text-xs text-muted-foreground">{user.points} pts</span>
-              <div
-                className={`w-16 mt-2 rounded-t-lg ${actualRank === 1 ? "gradient-hero" : actualRank === 2 ? "bg-primary/30" : "bg-accent/30"}`}
-                style={{ height: heights[i] }}
-              />
+              {podiumOrder.map((entry, i) => {
+                if (!entry) return null;
+                const heights = [80, 100, 64];
+                const actualRank = i === 0 ? 2 : i === 1 ? 1 : 3;
+                const isYou = entry.user_id === user?.id;
+                return (
+                  <motion.div
+                    key={entry.user_id}
+                    initial={{ y: 30, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 + i * 0.1 }}
+                    className="flex flex-col items-center"
+                  >
+                    <div className={`relative ${i === 1 ? "w-[72px] h-[72px]" : "w-14 h-14"} rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-bold text-lg mb-2`}>
+                      {entry.avatar_url ? (
+                        <img src={entry.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        entry.display_name[0]
+                      )}
+                      {actualRank === 1 && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                          <Crown className="w-5 h-5 text-warning fill-warning" />
+                        </div>
+                      )}
+                    </div>
+                    <span className={`text-xs font-semibold truncate max-w-[70px] text-center ${isYou ? "text-primary" : ""}`}>
+                      {isYou ? "You" : entry.display_name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{entry.total_points} pts</span>
+                    <div
+                      className={`w-16 mt-2 rounded-t-lg ${actualRank === 1 ? "gradient-hero" : actualRank === 2 ? "bg-primary/30" : "bg-accent/30"}`}
+                      style={{ height: heights[i] }}
+                    />
+                  </motion.div>
+                );
+              })}
             </motion.div>
-          );
-        })}
-      </motion.div>
+          )}
 
-      {/* Full Ranking */}
-      <div className="space-y-2">
-        {sorted.map((user, i) => (
-          <LeaderboardItem key={user.id} user={user} rank={i + 1} maxPoints={maxPoints} />
-        ))}
-      </div>
+          {/* Full Ranking */}
+          <div className="space-y-2">
+            {leaderboard.map((entry, i) => (
+              <LeaderboardItem
+                key={entry.user_id}
+                user={{
+                  id: entry.user_id,
+                  name: entry.user_id === user?.id ? "You" : entry.display_name,
+                  avatar: entry.avatar_url || "",
+                  points: entry.total_points,
+                  hours: entry.total_hours,
+                  streak: entry.streak_days,
+                }}
+                rank={i + 1}
+                maxPoints={maxPoints}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 };

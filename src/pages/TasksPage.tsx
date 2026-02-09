@@ -1,15 +1,19 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Filter } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import TaskCard from "@/components/TaskCard";
-import { mockTasks, categories } from "@/lib/mockData";
+import { useTasks } from "@/hooks/useTasks";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+const categories = ["Study", "Coding", "Gym", "Work", "Reading"];
+
 const TasksPage = () => {
-  const [tasks, setTasks] = useState(mockTasks);
+  const { user } = useAuth();
+  const { tasks, isLoading, addTask, toggleTask } = useTasks();
   const [filter, setFilter] = useState("All");
   const [newTitle, setNewTitle] = useState("");
   const [newCategory, setNewCategory] = useState("Study");
@@ -19,35 +23,39 @@ const TasksPage = () => {
   const filtered = filter === "All" ? tasks : tasks.filter((t) => t.category === filter);
   const completed = tasks.filter((t) => t.completed).length;
 
-  const toggleTask = (id: string) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
+  const handleToggle = (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (task) {
+      toggleTask.mutate({ id, completed: task.completed });
+    }
   };
 
-  const addTask = () => {
+  const handleAdd = async () => {
     if (!newTitle.trim()) return;
-    setTasks((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        title: newTitle,
-        category: newCategory,
-        categoryColor: "primary",
-        estimatedMins: parseInt(newMins) || 30,
-        completed: false,
-        loggedMins: 0,
-      },
-    ]);
+    await addTask.mutateAsync({
+      title: newTitle,
+      category: newCategory,
+      estimated_mins: parseInt(newMins) || 30,
+    });
     setNewTitle("");
     setNewMins("30");
     setOpen(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="pb-24 px-4 pt-6 max-w-lg mx-auto space-y-5">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold">Tasks</h1>
-          <p className="text-sm text-muted-foreground">{completed}/{tasks.length} completed today</p>
+          <p className="text-sm text-muted-foreground">{completed}/{tasks.length} completed</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -60,7 +68,12 @@ const TasksPage = () => {
               <DialogTitle className="text-xl font-bold">Add New Task</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
-              <Input placeholder="Task title..." value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="rounded-xl" />
+              <Input
+                placeholder="Task title..."
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                className="rounded-xl"
+              />
               <div className="grid grid-cols-2 gap-3">
                 <Select value={newCategory} onValueChange={setNewCategory}>
                   <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
@@ -68,9 +81,21 @@ const TasksPage = () => {
                     {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Input type="number" placeholder="Minutes" value={newMins} onChange={(e) => setNewMins(e.target.value)} className="rounded-xl" />
+                <Input
+                  type="number"
+                  placeholder="Minutes"
+                  value={newMins}
+                  onChange={(e) => setNewMins(e.target.value)}
+                  className="rounded-xl"
+                />
               </div>
-              <Button onClick={addTask} className="w-full rounded-xl gradient-primary text-primary-foreground border-0">Add Task</Button>
+              <Button
+                onClick={handleAdd}
+                disabled={addTask.isPending}
+                className="w-full rounded-xl gradient-primary text-primary-foreground border-0"
+              >
+                {addTask.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Task"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -97,7 +122,17 @@ const TasksPage = () => {
       <div className="space-y-2">
         <AnimatePresence>
           {filtered.map((task, i) => (
-            <TaskCard key={task.id} task={task} onToggle={toggleTask} index={i} />
+            <TaskCard
+              key={task.id}
+              task={{
+                ...task,
+                categoryColor: "primary",
+                estimatedMins: task.estimated_mins,
+                loggedMins: task.logged_mins,
+              }}
+              onToggle={handleToggle}
+              index={i}
+            />
           ))}
         </AnimatePresence>
         {filtered.length === 0 && (
