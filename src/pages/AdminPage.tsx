@@ -1,8 +1,9 @@
 import { useAdmin } from "@/hooks/useAdmin";
+import { useQuery } from "@tanstack/react-query"; // Import useQuery
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2, Shield, ShieldAlert, Users, Circle as CircleIcon, Edit, Plus, ListTodo } from "lucide-react";
+import { Loader2, Trash2, Shield, ShieldAlert, Users, Circle as CircleIcon, Edit, Plus, ListTodo, Eye, X } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -42,7 +43,8 @@ const AdminPage = () => {
         updateCircle,
         addMemberToCircle,
         removeMemberFromCircle,
-        createNewUser
+        createNewUser,
+        getCircleMembers
     } = useAdmin();
 
     const { categories, addCategory, deleteCategory } = useCategories();
@@ -60,6 +62,16 @@ const AdminPage = () => {
     const [addMemberOpen, setAddMemberOpen] = useState(false);
     const [selectedCircleForMember, setSelectedCircleForMember] = useState<any>(null);
     const [newMemberId, setNewMemberId] = useState("");
+
+    const [viewMembersOpen, setViewMembersOpen] = useState(false);
+    const [selectedCircleForView, setSelectedCircleForView] = useState<any>(null);
+
+    // Fetch members for selected circle
+    const { data: circleMembers, isLoading: membersLoading, refetch: refetchMembers } = useQuery({
+        queryKey: ["circle_members", selectedCircleForView?.id],
+        queryFn: () => getCircleMembers(selectedCircleForView?.id),
+        enabled: !!selectedCircleForView?.id,
+    });
 
     const [addUserOpen, setAddUserOpen] = useState(false);
     const [newUserEmail, setNewUserEmail] = useState("");
@@ -120,8 +132,27 @@ const AdminPage = () => {
             addMemberToCircle.mutate({
                 circleId: selectedCircleForMember.id,
                 userId: newMemberId.trim()
+            }, {
+                onSuccess: () => refetchMembers() // Refresh list if viewing
             });
             setAddMemberOpen(false);
+        }
+    };
+
+    const handleViewMembers = (circle: any) => {
+        setSelectedCircleForView(circle);
+        setViewMembersOpen(true);
+    };
+
+    const handleRemoveMember = (userId: string) => {
+        if (!selectedCircleForView) return;
+        if (confirm("Are you sure you want to remove this member?")) {
+            removeMemberFromCircle.mutate({
+                circleId: selectedCircleForView.id,
+                userId
+            }, {
+                onSuccess: () => refetchMembers() // Refresh list immediately
+            });
         }
     };
 
@@ -353,6 +384,24 @@ const AdminPage = () => {
                                                         variant="ghost"
                                                         size="icon"
                                                         className="h-8 w-8"
+                                                        onClick={() => handleViewMembers(circle)}
+                                                        title="View Members"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        onClick={() => handleViewMembers(circle)}
+                                                        title="View Members"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8"
                                                         onClick={() => handleAddMember(circle)}
                                                         title="Add Member"
                                                     >
@@ -542,6 +591,54 @@ const AdminPage = () => {
                         >
                             {createNewUser.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create User"}
                         </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* View Members Dialog */}
+            <Dialog open={viewMembersOpen} onOpenChange={setViewMembersOpen}>
+                <DialogContent className="max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Members of {selectedCircleForView?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        {membersLoading ? (
+                            <div className="flex justify-center p-8">
+                                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : (
+                            <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
+                                {circleMembers?.map((member: any) => (
+                                    <div key={member.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/50">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-card flex items-center justify-center font-bold text-xs border">
+                                                {member.display_name?.[0]}
+                                            </div>
+                                            <div>
+                                                <div className="font-medium text-sm">{member.display_name}</div>
+                                                <div className="text-[10px] text-muted-foreground font-mono">
+                                                    ID: {member.user_id}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {/* Don't allow removing self/admin if critical? No, admin can remove anyone. */}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleRemoveMember(member.user_id)}
+                                            className="text-destructive hover:bg-destructive/10 h-8 px-2"
+                                        >
+                                            <Trash2 className="w-4 h-4 mr-1" /> Remove
+                                        </Button>
+                                    </div>
+                                ))}
+                                {circleMembers?.length === 0 && (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        No members found.
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>

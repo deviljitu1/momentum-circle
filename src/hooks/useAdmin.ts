@@ -212,6 +212,16 @@ export const useAdmin = () => {
     });
 
 
+    const getCircleMembers = async (circleId: string) => {
+        const { data, error } = await supabase
+            .from("circle_members")
+            .select("*, profiles(*)")
+            .eq("circle_id", circleId);
+        if (error) throw error;
+        // @ts-ignore
+        return data.map((m: any) => m.profiles);
+    };
+
     return {
         isAdmin,
         isAdminLoading,
@@ -219,6 +229,7 @@ export const useAdmin = () => {
         usersLoading,
         allCircles,
         circlesLoading,
+        getCircleMembers,
         // Actions
         deleteUser,
         updateUserRole,
