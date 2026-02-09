@@ -1,10 +1,11 @@
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
-import { Home, ListTodo, Trophy, User } from "lucide-react";
+import { Home, ListTodo, Trophy, User, Users } from "lucide-react";
 import { motion } from "framer-motion";
 
 const navItems = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/tasks", icon: ListTodo, label: "Tasks" },
+  { to: "/circles", icon: Users, label: "Circles" },
   { to: "/leaderboard", icon: Trophy, label: "Rank" },
   { to: "/profile", icon: User, label: "Profile" },
 ];
@@ -21,7 +22,7 @@ const BottomNav = () => {
             <RouterNavLink
               key={item.to}
               to={item.to}
-              className="relative flex flex-col items-center gap-1 px-4 py-2"
+              className="relative flex flex-col items-center gap-1 px-3 py-2"
             >
               {isActive && (
                 <motion.div
@@ -36,7 +37,7 @@ const BottomNav = () => {
                 }`}
               />
               <span
-                className={`text-[11px] font-medium transition-colors ${
+                className={`text-[10px] font-medium transition-colors ${
                   isActive ? "text-primary" : "text-muted-foreground"
                 }`}
               >
