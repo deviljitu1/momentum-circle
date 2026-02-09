@@ -10,6 +10,7 @@ export interface Circle {
   invite_code: string;
   created_by: string | null;
   created_at: string;
+  member_count?: number;
 }
 
 export interface CircleMember {
@@ -48,11 +49,15 @@ export const useCircles = () => {
 
       const { data, error } = await supabase
         .from("circles")
-        .select("*")
+        .select("*, circle_members(count)")
         .in("id", circleIds);
 
       if (error) throw error;
-      return data as Circle[];
+
+      return data.map((c: any) => ({
+        ...c,
+        member_count: c.circle_members?.[0]?.count || 0
+      })) as Circle[];
     },
     enabled: !!user,
   });
