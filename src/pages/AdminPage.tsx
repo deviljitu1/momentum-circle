@@ -370,9 +370,16 @@ const AdminPage = () => {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex items-center gap-1">
-                                                    <Users className="w-3 h-3 text-muted-foreground" />
-                                                    <span>{circle.member_count}</span>
+                                                <div
+                                                    className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors group py-1"
+                                                    onClick={() => handleViewMembers(circle)}
+                                                    title="Click to manage members"
+                                                >
+                                                    <div className="flex items-center gap-1 bg-muted/40 px-2 py-1 rounded-md group-hover:bg-primary/10">
+                                                        <Users className="w-3 h-3 text-muted-foreground group-hover:text-primary" />
+                                                        <span className="font-medium">{circle.member_count}</span>
+                                                    </div>
+                                                    <Eye className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-muted-foreground text-sm">
@@ -621,15 +628,34 @@ const AdminPage = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        {/* Don't allow removing self/admin if critical? No, admin can remove anyone. */}
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleRemoveMember(member.user_id)}
-                                            className="text-destructive hover:bg-destructive/10 h-8 px-2"
-                                        >
-                                            <Trash2 className="w-4 h-4 mr-1" /> Remove
-                                        </Button>
+                                        <div className="flex gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    // We can re-use the handleEditUser function from the parent scope
+                                                    // But we need to make sure the user object has the right shape.
+                                                    // The member object from getCircleMembers usually has the profile fields directly 
+                                                    // OR nested in `profiles`? 
+                                                    // In useAdmin.ts: `return data.map((m: any) => m.profiles);`
+                                                    // So `member` IS the profile object.
+                                                    handleEditUser(member);
+                                                }}
+                                                className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                                                title="Edit User Details"
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleRemoveMember(member.user_id)}
+                                                className="text-destructive hover:bg-destructive/10 h-8 px-2"
+                                                title="Remove from Circle"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
                                     </div>
                                 ))}
                                 {circleMembers?.length === 0 && (
