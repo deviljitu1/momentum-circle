@@ -62,11 +62,6 @@ export const useAdmin = () => {
             // but if we are just deleting the profile via RLS:
             const { error } = await supabase.from("profiles").delete().eq("user_id", userId);
             if (error) throw error;
-
-            // Note: Truly deleting the Auth User usually requires an Edge Function 
-            // or the Service Role key, which we don't expose to the client.
-            // However, deleting the profile will likely cascade or at least break their access.
-            // Ideally, we'd have a server-side function for this.
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["admin_users"] });
@@ -92,6 +87,26 @@ export const useAdmin = () => {
         },
     });
 
+    // Mutation: Update User Role
+    const updateUserRole = useMutation({
+        mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'user' }) => {
+            const { error } = await supabase
+                .from("profiles")
+                // @ts-ignore
+                .update({ role })
+                .eq("user_id", userId);
+
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["admin_users"] });
+            toast({ title: "User role updated" });
+        },
+        onError: (error) => {
+            toast({ title: "Error updating role", description: error.message, variant: "destructive" });
+        },
+    });
+
     return {
         isAdmin,
         isAdminLoading,
@@ -100,6 +115,7 @@ export const useAdmin = () => {
         allCircles,
         circlesLoading,
         deleteUser,
-        deleteCircle
+        deleteCircle,
+        updateUserRole
     };
 };

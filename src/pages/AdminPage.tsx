@@ -23,7 +23,8 @@ const AdminPage = () => {
         allCircles,
         circlesLoading,
         deleteUser,
-        deleteCircle
+        deleteCircle,
+        updateUserRole
     } = useAdmin();
 
     if (isAdminLoading) {
@@ -147,6 +148,21 @@ const AdminPage = () => {
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </Button>
+                                                {/* Add Edit Button here later or allow role toggling */}
+                                                {user.role !== 'admin' && ( // Allow promoting to admin
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-primary hover:bg-primary/10"
+                                                        onClick={() => {
+                                                            if (confirm(`Promote ${user.display_name} to Admin?`)) {
+                                                                updateUserRole.mutate({ userId: user.user_id, role: 'admin' });
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Shield className="w-4 h-4" />
+                                                    </Button>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))}
