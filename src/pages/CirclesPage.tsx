@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { CircleChat } from "@/components/CircleChat";
+import { QuizzesTab } from "@/components/QuizzesTab";
 
 const reactionEmojis = ["🔥", "💪", "👏", "🎉", "❤️", "🚀"];
 
@@ -264,10 +265,11 @@ const CirclesPage = () => {
         </div>
 
         <Tabs defaultValue="activity" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="activity">Activity</TabsTrigger>
             <TabsTrigger value="members">Members</TabsTrigger>
             <TabsTrigger value="chat">Chat</TabsTrigger>
+            <TabsTrigger value="quizzes">Quizzes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="activity" className="space-y-3">
@@ -290,6 +292,10 @@ const CirclesPage = () => {
 
           <TabsContent value="chat" className="space-y-3">
             <CircleChat circleId={selectedCircle.id} />
+          </TabsContent>
+
+          <TabsContent value="quizzes" className="space-y-3">
+            <QuizzesTab circleId={selectedCircle.id} />
           </TabsContent>
         </Tabs>
       </div>
