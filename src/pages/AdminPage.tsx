@@ -41,7 +41,8 @@ const AdminPage = () => {
         updateUserName,
         updateCircle,
         addMemberToCircle,
-        removeMemberFromCircle
+        removeMemberFromCircle,
+        createNewUser
     } = useAdmin();
 
     const { categories, addCategory, deleteCategory } = useCategories();
@@ -59,6 +60,11 @@ const AdminPage = () => {
     const [addMemberOpen, setAddMemberOpen] = useState(false);
     const [selectedCircleForMember, setSelectedCircleForMember] = useState<any>(null);
     const [newMemberId, setNewMemberId] = useState("");
+
+    const [addUserOpen, setAddUserOpen] = useState(false);
+    const [newUserEmail, setNewUserEmail] = useState("");
+    const [newUserPass, setNewUserPass] = useState("");
+    const [newUserDisplayName, setNewUserDisplayName] = useState("");
 
     if (isAdminLoading) {
         return (
@@ -119,6 +125,20 @@ const AdminPage = () => {
         }
     };
 
+    const handleSaveNewUser = async () => {
+        if (newUserEmail && newUserPass && newUserDisplayName) {
+            await createNewUser.mutateAsync({
+                email: newUserEmail,
+                password: newUserPass,
+                name: newUserDisplayName
+            });
+            setAddUserOpen(false);
+            setNewUserEmail("");
+            setNewUserPass("");
+            setNewUserDisplayName("");
+        }
+    };
+
     return (
         <div className="container py-8 max-w-6xl space-y-8 pb-24">
             {/* Header Stats... (unchanged) */}
@@ -173,8 +193,11 @@ const AdminPage = () => {
                 <TabsContent value="users" className="space-y-4">
                     <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
                         {/* User Table Header... */}
-                        <div className="p-4 border-b bg-muted/30">
+                        <div className="p-4 border-b bg-muted/30 flex justify-between items-center">
                             <h3 className="font-semibold">User Management</h3>
+                            <Button size="sm" onClick={() => setAddUserOpen(true)}>
+                                <Plus className="w-4 h-4 mr-1" /> Add User
+                            </Button>
                         </div>
                         {usersLoading ? (
                             <div className="p-8 flex justify-center">
@@ -478,6 +501,51 @@ const AdminPage = () => {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Add User Dialog */}
+            <Dialog open={addUserOpen} onOpenChange={setAddUserOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add New User</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                            <Label>Email</Label>
+                            <Input
+                                type="email"
+                                value={newUserEmail}
+                                onChange={(e) => setNewUserEmail(e.target.value)}
+                                placeholder="user@example.com"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Password</Label>
+                            <Input
+                                type="password"
+                                value={newUserPass}
+                                onChange={(e) => setNewUserPass(e.target.value)}
+                                placeholder="Minimum 6 characters"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Display Name</Label>
+                            <Input
+                                value={newUserDisplayName}
+                                onChange={(e) => setNewUserDisplayName(e.target.value)}
+                                placeholder="John Doe"
+                            />
+                        </div>
+                        <Button
+                            onClick={handleSaveNewUser}
+                            className="w-full"
+                            disabled={createNewUser.isPending}
+                        >
+                            {createNewUser.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create User"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
         </div >
     );
 };

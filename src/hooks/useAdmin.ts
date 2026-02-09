@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js"; // Import createClient
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -154,6 +155,62 @@ export const useAdmin = () => {
         onError: (e) => onError(e, "removing member"),
     });
 
+    // Create New User (Admin Action)
+    const createNewUser = useMutation({
+        mutationFn: async ({ email, password, name }: { email: string; password: string; name: string }) => {
+            // 1. Create a temporary client with memory storage to avoid messing up current session
+            const tempClient = createClient(
+                import.meta.env.VITE_SUPABASE_URL,
+                import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                {
+                    auth: {
+                        persistSession: false, // Don't save to localStorage
+                        autoRefreshToken: false,
+                        detectSessionInUrl: false
+                    }
+                }
+            );
+
+            // 2. Sign up the new user
+            const { data, error } = await tempClient.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: name, // This might be used by triggers
+                    }
+                }
+            });
+
+            if (error) throw error;
+            if (!data.user) throw new Error("User creation failed");
+
+            // 3. User is created in Auth. Now ensure profile exists (trigger usually handles this)
+            // But we might want to update the display name explicitly if trigger didn't catch it perfectly
+            // Wait for a second for trigger to run? 
+            // Or just update directly as admin
+
+            // Note: Since we are admin in the MAIN client, we can update the profile immediately
+            // But we need the new user's ID.
+            const newUserId = data.user.id;
+
+            // Give the trigger a moment, then update name just in case
+            await new Promise(r => setTimeout(r, 1000));
+
+            const { error: updateError } = await supabase
+                .from("profiles")
+                .update({ display_name: name }) // Ensure name is set
+                .eq("user_id", newUserId);
+
+            if (updateError) {
+                console.warn("Could not update new user profile name immediately:", updateError);
+                // Not fatal, user is created
+            }
+        },
+        onSuccess: () => onSuccess("User created successfully", ["admin_users"]),
+        onError: (e) => onError(e, "creating user"),
+    });
+
 
     return {
         isAdmin,
@@ -169,6 +226,7 @@ export const useAdmin = () => {
         deleteCircle,
         updateCircle,
         addMemberToCircle,
-        removeMemberFromCircle
+        removeMemberFromCircle,
+        createNewUser
     };
 };

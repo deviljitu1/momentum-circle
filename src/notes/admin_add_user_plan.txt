@@ -1,0 +1,8 @@
+-- Actually, we can enable "Invite User" via Database Function using pg_net extension?
+-- That's complicated.
+
+-- Let's try a simpler approach if the user is asking just to "add" them to the list.
+-- But it likely means creating an account.
+
+-- WE WILL USE A MEMORY-ONLY SUPABASE CLIENT.
+-- This allows `signUp` without touching LocalStorage.
