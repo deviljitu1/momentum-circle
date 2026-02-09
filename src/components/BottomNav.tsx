@@ -1,6 +1,7 @@
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
-import { Home, ListTodo, Trophy, User, Users } from "lucide-react";
+import { Home, ListTodo, Trophy, User, Users, ShieldAlert } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAdmin } from "@/hooks/useAdmin";
 
 const navItems = [
   { to: "/", icon: Home, label: "Home" },
@@ -12,11 +13,17 @@ const navItems = [
 
 const BottomNav = () => {
   const location = useLocation();
+  const { isAdmin } = useAdmin();
+
+  // Add Admin tab if user is admin
+  const items = isAdmin
+    ? [...navItems, { to: "/admin", icon: ShieldAlert, label: "Admin" }]
+    : navItems;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-xl border-t border-border/50 pb-safe">
       <div className="flex items-center justify-around max-w-lg mx-auto h-16 px-2">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const isActive = location.pathname === item.to;
           return (
             <RouterNavLink
@@ -32,14 +39,12 @@ const BottomNav = () => {
                 />
               )}
               <item.icon
-                className={`w-5 h-5 transition-colors ${
-                  isActive ? "text-primary" : "text-muted-foreground"
-                }`}
+                className={`w-5 h-5 transition-colors ${isActive ? "text-primary" : "text-muted-foreground"
+                  }`}
               />
               <span
-                className={`text-[10px] font-medium transition-colors ${
-                  isActive ? "text-primary" : "text-muted-foreground"
-                }`}
+                className={`text-[10px] font-medium transition-colors ${isActive ? "text-primary" : "text-muted-foreground"
+                  }`}
               >
                 {item.label}
               </span>
