@@ -2,7 +2,8 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2, Shield, ShieldAlert, Users, Circle as CircleIcon, Edit, Plus } from "lucide-react";
+import { Loader2, Trash2, Shield, ShieldAlert, Users, Circle as CircleIcon, Edit, Plus, ListTodo } from "lucide-react";
+import { useCategories } from "@/hooks/useCategories";
 import { formatDistanceToNow } from "date-fns";
 import {
     Table,
@@ -42,6 +43,9 @@ const AdminPage = () => {
         addMemberToCircle,
         removeMemberFromCircle
     } = useAdmin();
+
+    const { categories, addCategory, deleteCategory } = useCategories();
+    const [newTaskCategory, setNewTaskCategory] = useState("");
 
     const [editUserOpen, setEditUserOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -160,6 +164,9 @@ const AdminPage = () => {
                     </TabsTrigger>
                     <TabsTrigger value="circles" className="gap-2">
                         <CircleIcon className="w-4 h-4" /> Circles
+                    </TabsTrigger>
+                    <TabsTrigger value="categories" className="gap-2">
+                        <ListTodo className="w-4 h-4" /> Categories
                     </TabsTrigger>
                 </TabsList>
 
@@ -357,6 +364,60 @@ const AdminPage = () => {
                         )}
                     </div>
                 </TabsContent>
+
+                <TabsContent value="categories" className="space-y-4">
+                    <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden p-6 space-y-6">
+                        <div>
+                            <h3 className="font-semibold text-lg">Manage Task Categories</h3>
+                            <p className="text-sm text-muted-foreground">Add or remove task types available to users.</p>
+                        </div>
+
+                        <div className="flex gap-2 max-w-sm">
+                            <Input
+                                placeholder="New Category (e.g. Meditation)"
+                                value={newTaskCategory}
+                                onChange={(e) => setNewTaskCategory(e.target.value)}
+                            />
+                            <Button
+                                onClick={() => {
+                                    if (newTaskCategory.trim()) {
+                                        addCategory.mutate(newTaskCategory.trim(), {
+                                            onSuccess: () => setNewTaskCategory("")
+                                        });
+                                    }
+                                }}
+                                disabled={!newTaskCategory.trim()}
+                            >
+                                <Plus className="w-4 h-4 mr-1" /> Add
+                            </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {categories.map((cat: any) => (
+                                <div key={cat.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/20">
+                                    <span className="font-medium">{cat.name}</span>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                        onClick={() => {
+                                            if (confirm(`Delete category "${cat.name}"?`)) {
+                                                deleteCategory.mutate(cat.id);
+                                            }
+                                        }}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            ))}
+                            {categories.length === 0 && (
+                                <div className="col-span-full text-center py-8 text-muted-foreground">
+                                    No categories found. Add one above!
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </TabsContent>
             </Tabs>
 
             {/* Edit User Dialog */}
@@ -417,7 +478,7 @@ const AdminPage = () => {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     );
 };
 

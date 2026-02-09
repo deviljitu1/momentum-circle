@@ -9,11 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const categories = ["Study", "Coding", "Gym", "Work", "Reading"];
+import { useCategories } from "@/hooks/useCategories";
+
+// const categories = ["Study", "Coding", "Gym", "Work", "Reading"];
 
 const TasksPage = () => {
   const { user } = useAuth();
   const { tasks, isLoading, addTask, toggleTask } = useTasks();
+  const { categories: categoryData } = useCategories();
+  const categories = categoryData.length > 0 ? categoryData.map(c => c.name) : ["Study", "Coding", "Gym", "Work", "Reading"];
+
   const [filter, setFilter] = useState("All");
   const [newTitle, setNewTitle] = useState("");
   const [newCategory, setNewCategory] = useState("Study");
@@ -107,11 +112,10 @@ const TasksPage = () => {
           <button
             key={cat}
             onClick={() => setFilter(cat)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-              filter === cat
+            className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${filter === cat
                 ? "gradient-primary text-primary-foreground"
                 : "bg-card border border-border/50 text-muted-foreground hover:text-foreground"
-            }`}
+              }`}
           >
             {cat}
           </button>
