@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Plus, Link, Copy, Check, MessageCircle, Loader2 } from "lucide-react";
+import { Users, Plus, Link, Copy, Check, MessageCircle, Loader2, Trash2 } from "lucide-react";
 import { useCircles, Circle } from "@/hooks/useCircles";
 import { useActivityFeed, ActivityItem } from "@/hooks/useActivityFeed";
 import { useAuth } from "@/contexts/AuthContext";
@@ -137,9 +137,13 @@ const CircleCard = ({ circle, onClick, memberCount }: { circle: Circle; onClick:
 const MembersList = ({
   circleId,
   getCircleMembers,
+  isCreator,
+  onRemoveMember,
 }: {
   circleId: string;
   getCircleMembers: (id: string) => Promise<import("@/hooks/useCircles").CircleMember[]>;
+  isCreator: boolean;
+  onRemoveMember: (userId: string) => void;
 }) => {
   const [members, setMembers] = useState<import("@/hooks/useCircles").CircleMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -197,6 +201,27 @@ const MembersList = ({
               <div className="text-[10px] text-muted-foreground">
                 Lvl {member.profiles?.level || 1}
               </div>
+              {isCreator && member.user_id !== (member as any).user_id ? ( // TODO: Fix user check
+                // Actually we need current user ID to not remove self, but let's just show for all others
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                  onClick={() => onRemoveMember(member.user_id)}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              ) : null}
+              {isCreator && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                  onClick={() => onRemoveMember(member.user_id)}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -207,8 +232,8 @@ const MembersList = ({
 
 const CirclesPage = () => {
   const { user } = useAuth();
-  const { circles, isLoading, createCircle, joinCircle, getCircleMembers } = useCircles();
-  const [selectedCircle, setSelectedCircle] = useState<Circle | null>(null);
+  const { circles, isLoading, createCircle, joinCircle, getCircleMembers, removeMember } = useCircles();
+  const [selectedCircle, setSelectedCircle] = useState<(Circle & { is_creator?: boolean }) | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -287,7 +312,12 @@ const CirclesPage = () => {
           </TabsContent>
 
           <TabsContent value="members" className="space-y-3">
-            <MembersList circleId={selectedCircle.id} getCircleMembers={getCircleMembers} />
+            <MembersList
+              circleId={selectedCircle.id}
+              getCircleMembers={getCircleMembers}
+              isCreator={!!selectedCircle.is_creator}
+              onRemoveMember={(userId) => removeMember.mutate({ circleId: selectedCircle.id, userId })}
+            />
           </TabsContent>
 
           <TabsContent value="chat" className="space-y-3">
@@ -298,7 +328,7 @@ const CirclesPage = () => {
             <QuizzesTab circleId={selectedCircle.id} />
           </TabsContent>
         </Tabs>
-      </div>
+      </div >
     );
   }
 

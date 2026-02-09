@@ -56,8 +56,9 @@ export const useCircles = () => {
 
       return data.map((c: any) => ({
         ...c,
-        member_count: c.circle_members?.[0]?.count || 0
-      })) as Circle[];
+        member_count: c.circle_members?.[0]?.count || 0,
+        is_creator: c.created_by === user.id
+      })) as (Circle & { is_creator: boolean })[];
     },
     enabled: !!user,
   });
@@ -189,5 +190,25 @@ export const useCircles = () => {
     return data as unknown as CircleMember[];
   };
 
-  return { circles, isLoading, createCircle, joinCircle, getCircleMembers };
+  const removeMember = useMutation({
+    mutationFn: async ({ circleId, userId }: { circleId: string; userId: string }) => {
+      const { error } = await supabase
+        .from("circle_members")
+        .delete()
+        .eq("circle_id", circleId)
+        .eq("user_id", userId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["circles"] });
+      toast({ title: "Member removed 👋" });
+    },
+    onError: (error) => {
+      console.error(error);
+      toast({ title: "Error removing member", description: "You might not have permission.", variant: "destructive" });
+    },
+  });
+
+  return { circles, isLoading, createCircle, joinCircle, getCircleMembers, removeMember };
 };
