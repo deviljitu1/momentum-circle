@@ -213,13 +213,22 @@ export const useAdmin = () => {
 
 
     const getCircleMembers = async (circleId: string) => {
+        console.log("Fetching members for circle:", circleId);
         const { data, error } = await supabase
             .from("circle_members")
             .select("*, profiles(*)")
             .eq("circle_id", circleId);
-        if (error) throw error;
+
+        if (error) {
+            console.error("Error fetching members:", error);
+            throw error;
+        }
+
+        console.log("Found members raw data:", data);
         // @ts-ignore
-        return data.map((m: any) => m.profiles);
+        const profiles = data.map((m: any) => m.profiles).filter(p => !!p); // Filter out null profiles
+        console.log("Mapped profiles:", profiles);
+        return profiles;
     };
 
     return {

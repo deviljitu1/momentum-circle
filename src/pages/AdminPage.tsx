@@ -67,9 +67,13 @@ const AdminPage = () => {
     const [selectedCircleForView, setSelectedCircleForView] = useState<any>(null);
 
     // Fetch members for selected circle
+    // Fetch members for selected circle
     const { data: circleMembers, isLoading: membersLoading, refetch: refetchMembers } = useQuery({
         queryKey: ["circle_members", selectedCircleForView?.id],
-        queryFn: () => getCircleMembers(selectedCircleForView?.id),
+        queryFn: () => {
+            console.log("REFETCHING MEMBERS FOR:", selectedCircleForView?.id);
+            return getCircleMembers(selectedCircleForView?.id)
+        },
         enabled: !!selectedCircleForView?.id,
     });
 
@@ -140,7 +144,10 @@ const AdminPage = () => {
     };
 
     const handleViewMembers = (circle: any) => {
+        console.log("User clicked view members for:", circle.id, circle.name);
         setSelectedCircleForView(circle);
+        // Add a small timeout to allow state to settle or force dialog open separately? 
+        // Typically React batching handles this, but let's be explicit
         setViewMembersOpen(true);
     };
 
