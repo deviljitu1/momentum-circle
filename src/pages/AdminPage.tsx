@@ -1,7 +1,8 @@
 import { useAdmin } from "@/hooks/useAdmin";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2, Shield, ShieldAlert, Users, Circle as CircleIcon } from "lucide-react";
+import { Loader2, Trash2, Shield, ShieldAlert, Users, Circle as CircleIcon, Edit, Plus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import {
     Table,
@@ -13,8 +14,19 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Navigate } from "react-router-dom";
+import { useState } from "react";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const AdminPage = () => {
+    const { toast } = useToast();
     const {
         isAdmin,
         isAdminLoading,
@@ -24,8 +36,25 @@ const AdminPage = () => {
         circlesLoading,
         deleteUser,
         deleteCircle,
-        updateUserRole
+        updateUserRole,
+        updateUserName,
+        updateCircle,
+        addMemberToCircle,
+        removeMemberFromCircle
     } = useAdmin();
+
+    const [editUserOpen, setEditUserOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [newUserName, setNewUserName] = useState("");
+
+    const [editCircleOpen, setEditCircleOpen] = useState(false);
+    const [selectedCircle, setSelectedCircle] = useState<any>(null);
+    const [newCircleName, setNewCircleName] = useState("");
+    const [newCircleDesc, setNewCircleDesc] = useState("");
+
+    const [addMemberOpen, setAddMemberOpen] = useState(false);
+    const [selectedCircleForMember, setSelectedCircleForMember] = useState<any>(null);
+    const [newMemberId, setNewMemberId] = useState("");
 
     if (isAdminLoading) {
         return (
@@ -39,8 +68,56 @@ const AdminPage = () => {
         return <Navigate to="/" replace />;
     }
 
+    const handleEditUser = (user: any) => {
+        setSelectedUser(user);
+        setNewUserName(user.display_name);
+        setEditUserOpen(true);
+    };
+
+    const handleSaveUser = () => {
+        if (selectedUser && newUserName.trim()) {
+            updateUserName.mutate({ userId: selectedUser.user_id, name: newUserName });
+            setEditUserOpen(false);
+        }
+    };
+
+    const handleEditCircle = (circle: any) => {
+        setSelectedCircle(circle);
+        setNewCircleName(circle.name);
+        setNewCircleDesc(circle.description || "");
+        setEditCircleOpen(true);
+    };
+
+    const handleSaveCircle = () => {
+        if (selectedCircle && newCircleName.trim()) {
+            updateCircle.mutate({
+                circleId: selectedCircle.id,
+                name: newCircleName,
+                description: newCircleDesc
+            });
+            setEditCircleOpen(false);
+        }
+    };
+
+    const handleAddMember = (circle: any) => {
+        setSelectedCircleForMember(circle);
+        setNewMemberId("");
+        setAddMemberOpen(true);
+    };
+
+    const handleSaveMember = () => {
+        if (selectedCircleForMember && newMemberId.trim()) {
+            addMemberToCircle.mutate({
+                circleId: selectedCircleForMember.id,
+                userId: newMemberId.trim()
+            });
+            setAddMemberOpen(false);
+        }
+    };
+
     return (
         <div className="container py-8 max-w-6xl space-y-8 pb-24">
+            {/* Header Stats... (unchanged) */}
             <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center text-destructive">
                     <ShieldAlert className="w-6 h-6" />
@@ -88,6 +165,7 @@ const AdminPage = () => {
 
                 <TabsContent value="users" className="space-y-4">
                     <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
+                        {/* User Table Header... */}
                         <div className="p-4 border-b bg-muted/30">
                             <h3 className="font-semibold">User Management</h3>
                         </div>
@@ -99,7 +177,7 @@ const AdminPage = () => {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>User</TableHead>
+                                        <TableHead>User (ID)</TableHead>
                                         <TableHead>Role</TableHead>
                                         <TableHead>Joined</TableHead>
                                         <TableHead>Stats</TableHead>
@@ -116,10 +194,21 @@ const AdminPage = () => {
                                                     </div>
                                                     <div>
                                                         <div className="font-bold">{user.display_name}</div>
+                                                        <div
+                                                            className="text-[10px] text-muted-foreground font-mono cursor-pointer hover:text-primary transition-colors"
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(user.user_id);
+                                                                toast({ title: "ID Copied!", description: "User ID copied to clipboard." });
+                                                            }}
+                                                            title="Click to copy ID"
+                                                        >
+                                                            ID: {user.user_id}
+                                                        </div>
                                                         <div className="text-xs text-muted-foreground">{user.email || "No email"}</div>
                                                     </div>
                                                 </div>
                                             </TableCell>
+                                            {/* ... rest of columns ... */}
                                             <TableCell>
                                                 <Badge variant={user.role === 'admin' ? "destructive" : "secondary"}>
                                                     {user.role || 'user'}
@@ -135,34 +224,46 @@ const AdminPage = () => {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                                    onClick={() => {
-                                                        if (confirm(`Are you sure you want to delete ${user.display_name}? This cannot be undone.`)) {
-                                                            deleteUser.mutate(user.user_id);
-                                                        }
-                                                    }}
-                                                    disabled={user.role === 'admin'} // Protect admins from deleting each other easily
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
-                                                {/* Add Edit Button here later or allow role toggling */}
-                                                {user.role !== 'admin' && ( // Allow promoting to admin
+                                                <div className="flex justify-end gap-1">
                                                     <Button
                                                         variant="ghost"
-                                                        size="sm"
-                                                        className="text-primary hover:bg-primary/10"
+                                                        size="icon"
+                                                        onClick={() => handleEditUser(user)}
+                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                    >
+                                                        <Edit className="w-4 h-4" />
+                                                    </Button>
+
+                                                    {/* Promote/Demote Toggle */}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className={`h-8 w-8 ${user.role === 'admin' ? 'text-destructive' : 'text-primary'}`}
                                                         onClick={() => {
-                                                            if (confirm(`Promote ${user.display_name} to Admin?`)) {
-                                                                updateUserRole.mutate({ userId: user.user_id, role: 'admin' });
+                                                            const newRole = user.role === 'admin' ? 'user' : 'admin';
+                                                            if (confirm(`Change ${user.display_name}'s role to ${newRole}?`)) {
+                                                                updateUserRole.mutate({ userId: user.user_id, role: newRole });
                                                             }
                                                         }}
+                                                        disabled={user.email === 'admin@momentum.com'} // Prevent blocking super admin
                                                     >
                                                         <Shield className="w-4 h-4" />
                                                     </Button>
-                                                )}
+
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                        onClick={() => {
+                                                            if (confirm(`Delete ${user.display_name}? This cannot be undone.`)) {
+                                                                deleteUser.mutate(user.user_id);
+                                                            }
+                                                        }}
+                                                        disabled={user.role === 'admin'}
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -201,6 +302,7 @@ const AdminPage = () => {
                                                     <div className="text-xs text-muted-foreground line-clamp-1">{circle.description}</div>
                                                 </div>
                                             </TableCell>
+                                            {/* ... rest of columns ... */}
                                             <TableCell>
                                                 <Badge variant="outline" className="font-mono">
                                                     {circle.invite_code}
@@ -216,18 +318,37 @@ const AdminPage = () => {
                                                 {formatDistanceToNow(new Date(circle.created_at), { addSuffix: true })}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                                    onClick={() => {
-                                                        if (confirm(`Are you sure you want to delete ${circle.name}?`)) {
-                                                            deleteCircle.mutate(circle.id);
-                                                        }
-                                                    }}
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
+                                                <div className="flex justify-end gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        onClick={() => handleAddMember(circle)}
+                                                        title="Add Member"
+                                                    >
+                                                        <Plus className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleEditCircle(circle)}
+                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                    >
+                                                        <Edit className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                        onClick={() => {
+                                                            if (confirm(`Delete ${circle.name}?`)) {
+                                                                deleteCircle.mutate(circle.id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -237,6 +358,65 @@ const AdminPage = () => {
                     </div>
                 </TabsContent>
             </Tabs>
+
+            {/* Edit User Dialog */}
+            <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit User</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                            <Label>Display Name</Label>
+                            <Input value={newUserName} onChange={(e) => setNewUserName(e.target.value)} />
+                        </div>
+                        <Button onClick={handleSaveUser} className="w-full">Save Changes</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Circle Dialog */}
+            <Dialog open={editCircleOpen} onOpenChange={setEditCircleOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Circle</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                            <Label>Name</Label>
+                            <Input value={newCircleName} onChange={(e) => setNewCircleName(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Description</Label>
+                            <Input value={newCircleDesc} onChange={(e) => setNewCircleDesc(e.target.value)} />
+                        </div>
+                        <Button onClick={handleSaveCircle} className="w-full">Save Changes</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Add Member Dialog */}
+            <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add Member to {selectedCircleForMember?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <div className="text-sm text-muted-foreground">
+                            Copy the <strong>User ID</strong> from the Users table and paste it here.
+                        </div>
+                        <div className="space-y-2">
+                            <Label>User ID</Label>
+                            <Input
+                                placeholder="e.g. 523..."
+                                value={newMemberId}
+                                onChange={(e) => setNewMemberId(e.target.value)}
+                            />
+                        </div>
+                        <Button onClick={handleSaveMember} className="w-full">Add Member</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
