@@ -5,10 +5,12 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdmin } from "@/hooks/useAdmin";
 
 const ProfilePage = () => {
   const { user, profile, signOut, loading } = useAuth();
   const navigate = useNavigate();
+  const { isAdmin } = useAdmin();
 
   const { data: badges = [] } = useQuery({
     queryKey: ["badges", user?.id],
@@ -30,7 +32,7 @@ const ProfilePage = () => {
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 6);
-      
+
       const { data } = await supabase
         .from("daily_stats")
         .select("*")
@@ -38,7 +40,7 @@ const ProfilePage = () => {
         .gte("date", startDate.toISOString().split("T")[0])
         .lte("date", endDate.toISOString().split("T")[0])
         .order("date");
-      
+
       return data || [];
     },
     enabled: !!user,
@@ -184,9 +186,8 @@ const ProfilePage = () => {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.6 + i * 0.05, type: "spring", stiffness: 300 }}
-              className={`flex flex-col items-center gap-1 p-3 rounded-xl border border-border/50 ${
-                badge.unlocked ? "bg-card shadow-card" : "bg-muted/50 opacity-40"
-              }`}
+              className={`flex flex-col items-center gap-1 p-3 rounded-xl border border-border/50 ${badge.unlocked ? "bg-card shadow-card" : "bg-muted/50 opacity-40"
+                }`}
             >
               <span className="text-2xl">{badge.badge_emoji}</span>
               <span className="text-[10px] font-semibold text-center leading-tight">{badge.badge_name}</span>
@@ -196,8 +197,17 @@ const ProfilePage = () => {
       </motion.div>
 
       {/* Account Info */}
-      <div className="bg-card rounded-xl p-4 border border-border/50 text-sm text-muted-foreground">
+      <div className="bg-card rounded-xl p-4 border border-border/50 text-sm text-muted-foreground space-y-3">
         <p>Signed in as: {user?.email}</p>
+
+        {isAdmin && (
+          <Button
+            className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={() => navigate("/admin")}
+          >
+            Access Admin Dashboard
+          </Button>
+        )}
       </div>
     </div>
   );
