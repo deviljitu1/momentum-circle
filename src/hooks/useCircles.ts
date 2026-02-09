@@ -34,15 +34,15 @@ export const useCircles = () => {
     queryKey: ["circles", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      
+
       // Get circles user is a member of
       const { data: memberData, error: memberError } = await supabase
         .from("circle_members")
         .select("circle_id")
         .eq("user_id", user.id);
-      
+
       if (memberError) throw memberError;
-      
+
       const circleIds = memberData.map((m) => m.circle_id);
       if (circleIds.length === 0) return [];
 
@@ -50,7 +50,7 @@ export const useCircles = () => {
         .from("circles")
         .select("*")
         .in("id", circleIds);
-      
+
       if (error) throw error;
       return data as Circle[];
     },
@@ -60,32 +60,47 @@ export const useCircles = () => {
   const createCircle = useMutation({
     mutationFn: async ({ name, description }: { name: string; description?: string }) => {
       if (!user) throw new Error("Not authenticated");
-      
+
+      console.log("Creating circle:", { name, description, user_id: user.id });
+
       // Create circle
       const { data: circle, error: circleError } = await supabase
         .from("circles")
         .insert({ name, description, created_by: user.id })
         .select()
         .single();
-      
-      if (circleError) throw circleError;
+
+      if (circleError) {
+        console.error("Error creating circle:", circleError);
+        throw circleError;
+      }
+
+      console.log("Circle created:", circle);
 
       // Add creator as member
       const { error: memberError } = await supabase
         .from("circle_members")
         .insert({ circle_id: circle.id, user_id: user.id });
-      
-      if (memberError) throw memberError;
 
-      // Create activity
-      await supabase.from("activity_feed").insert({
-        user_id: user.id,
-        circle_id: circle.id,
-        activity_type: "joined_circle",
-        title: `Created ${name}`,
-        description: "Started a new circle!",
-        points_earned: 50,
-      });
+      if (memberError) {
+        console.error("Error adding member:", memberError);
+        // Try to cleanup if possible, or just throw
+        throw memberError;
+      }
+
+      // Create activity (best effort)
+      try {
+        await supabase.from("activity_feed").insert({
+          user_id: user.id,
+          circle_id: circle.id,
+          activity_type: "joined_circle",
+          title: `Created ${name}`,
+          description: "Started a new circle!",
+          points_earned: 50,
+        });
+      } catch (activityError) {
+        console.warn("Failed to log activity:", activityError);
+      }
 
       return circle;
     },
@@ -94,6 +109,7 @@ export const useCircles = () => {
       toast({ title: "Circle created! 🎉" });
     },
     onError: (error: Error) => {
+      console.error("Mutation error:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
@@ -108,7 +124,7 @@ export const useCircles = () => {
         .select("*")
         .eq("invite_code", inviteCode.toLowerCase().trim())
         .maybeSingle();
-      
+
       if (findError) throw findError;
       if (!circle) throw new Error("Circle not found. Check the invite code.");
 
@@ -119,14 +135,14 @@ export const useCircles = () => {
         .eq("circle_id", circle.id)
         .eq("user_id", user.id)
         .maybeSingle();
-      
+
       if (existing) throw new Error("You're already in this circle!");
 
       // Join circle
       const { error: joinError } = await supabase
         .from("circle_members")
         .insert({ circle_id: circle.id, user_id: user.id });
-      
+
       if (joinError) throw joinError;
 
       // Create activity
@@ -163,7 +179,7 @@ export const useCircles = () => {
         )
       `)
       .eq("circle_id", circleId);
-    
+
     if (error) throw error;
     return data as unknown as CircleMember[];
   };
