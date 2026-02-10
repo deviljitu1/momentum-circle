@@ -8,6 +8,8 @@ interface LeaderboardUser {
   points: number;
   hours: number;
   streak: number;
+  percentage?: number;
+  target?: number;
 }
 
 interface LeaderboardItemProps {
@@ -24,9 +26,12 @@ const rankIcons = [
 ];
 
 const LeaderboardItem = ({ user, rank, maxPoints, prevUserPoints }: LeaderboardItemProps) => {
-  const barWidth = maxPoints > 0 ? (user.points / maxPoints) * 100 : 0;
+  // Use percentage for bar width if available, otherwise fallback to points
+  const barWidth = user.percentage !== undefined
+    ? Math.min(100, user.percentage)
+    : (maxPoints > 0 ? (user.points / maxPoints) * 100 : 0);
+
   const isTop3 = rank <= 3;
-  const pointsToNext = prevUserPoints ? prevUserPoints - user.points : 0;
 
   return (
     <motion.div
@@ -53,7 +58,16 @@ const LeaderboardItem = ({ user, rank, maxPoints, prevUserPoints }: LeaderboardI
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
           <span className="font-semibold text-sm truncate mr-2">{user.name}</span>
-          <span className="text-sm font-bold text-primary shrink-0">{user.points} pts</span>
+          <div className="flex items-center gap-2">
+            {user.target && (
+              <span className="text-[10px] text-muted-foreground hidden sm:inline-block">
+                Target: {user.target}h
+              </span>
+            )}
+            <span className="text-sm font-bold text-primary shrink-0">
+              {user.percentage !== undefined ? `${user.percentage}%` : `${user.points} pts`}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -65,21 +79,11 @@ const LeaderboardItem = ({ user, rank, maxPoints, prevUserPoints }: LeaderboardI
               transition={{ delay: rank * 0.05 + 0.2, duration: 0.8, ease: "easeOut" }}
             />
           </div>
-          {pointsToNext > 0 && (
-            <span className="text-[10px] text-muted-foreground whitespace-nowrap hidden sm:inline-block">
-              -{pointsToNext} to next
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-3 mt-1.5 flex-wrap">
           <span className="text-[10px] sm:text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">{user.hours.toFixed(1)}h focused</span>
           <span className="text-[10px] sm:text-xs text-muted-foreground bg-orange-500/10 text-orange-600 px-1.5 py-0.5 rounded border border-orange-500/20">🔥 {user.streak}d streak</span>
-          {pointsToNext > 0 && (
-            <span className="text-[10px] text-muted-foreground sm:hidden">
-              ↑ {pointsToNext} pts
-            </span>
-          )}
         </div>
       </div>
     </motion.div>
