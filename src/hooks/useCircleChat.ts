@@ -26,7 +26,7 @@ export const useCircleChat = (circleId: string) => {
 
         const fetchMessages = async () => {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await (supabase as any)
                     .from("circle_messages")
                     .select(`
             *,
@@ -102,7 +102,7 @@ export const useCircleChat = (circleId: string) => {
         if (!user || !content.trim()) return;
 
         try {
-            const { error } = await supabase.from("circle_messages").insert({
+            const { error } = await (supabase as any).from("circle_messages").insert({
                 circle_id: circleId,
                 user_id: user.id,
                 content: content.trim(),

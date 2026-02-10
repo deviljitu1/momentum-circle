@@ -10,7 +10,7 @@ export const useCategories = () => {
         queryKey: ["task_categories"],
         queryFn: async () => {
             // @ts-ignore
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from("task_categories")
                 .select("*")
                 .order("created_at", { ascending: true });
