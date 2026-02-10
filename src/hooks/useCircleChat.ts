@@ -223,10 +223,27 @@ export const useCircleChat = (circleId: string) => {
         }
     };
 
+    const deleteMessagesBefore = async (date: Date) => {
+        if (!user) return;
+        try {
+            const { error } = await (supabase as any)
+                .from("circle_messages")
+                .delete()
+                .eq("circle_id", circleId)
+                .lt("created_at", date.toISOString());
+
+            if (error) throw error;
+            toast({ title: "History Cleared", description: "Messages older than selected date deleted." });
+        } catch (error) {
+            console.error("Delete error:", error);
+            toast({ title: "Error", description: "Failed to delete messages.", variant: "destructive" });
+        }
+    };
+
     const sendTyping = async (isTyping: boolean) => {
         if (!user || !channelRef.current) return;
         await channelRef.current.track({ user_id: user.id, display_name: user.user_metadata?.display_name || "You", isTyping });
     };
 
-    return { messages, loading, sendMessage, clearChat, typingUsers, sendTyping };
+    return { messages, loading, sendMessage, clearChat, deleteMessagesBefore, typingUsers, sendTyping };
 };
