@@ -36,8 +36,11 @@ const Dashboard = () => {
       { targetId: "tour-progress", title: "Daily Progress", content: "Track your completed tasks and focus time here." },
       { targetId: "tour-stats", title: "Quick Stats", content: "See your hours, goal progress, and level at a glance." },
       { targetId: "tour-add-task", title: "Add Tasks", content: "Quickly add new tasks to your day from here." },
-      { targetId: "tour-leaderboard", title: "Leaderboard", content: "See how you stack up against others." },
-      { targetId: "nav-circles", title: "Communities", content: "Join Circles to find like-minded people.", placement: "top" },
+      { targetId: "nav-home", title: "Home", content: "Return to your dashboard anytime.", placement: "top" },
+      { targetId: "nav-circles", title: "Circles", content: "Join communities and find accountability partners.", placement: "top" },
+      { targetId: "nav-leaderboard", title: "Leaderboard", content: "Compete globally and track your ranking.", placement: "top" },
+      { targetId: "nav-insights", title: "Insights", content: "Analyze your long-term productivity trends.", placement: "top" },
+      { targetId: "nav-profile", title: "Profile", content: "Manage your account and settings.", placement: "top" },
     ]);
   };
 
