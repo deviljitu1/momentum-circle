@@ -61,62 +61,50 @@ export const AppTour = () => {
         const space = 15;
         const placement = step.placement || "bottom";
         const isMobile = window.innerWidth < 768;
+        const screenW = window.innerWidth;
+        const screenH = window.innerHeight;
 
         let style: React.CSSProperties = {};
 
         if (isMobile) {
-            const verticalSpaceBelow = window.innerHeight - targetRect.bottom;
+            const verticalSpaceBelow = screenH - targetRect.bottom;
             const verticalSpaceAbove = targetRect.top;
 
-            // Improved Mobile Logic:
-            // 1. Try Bottom
+            style = {
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "calc(100vw - 32px)",
+                maxWidth: "360px"
+            };
+
             if (verticalSpaceBelow > 180) {
-                style = {
-                    top: targetRect.bottom + 20,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: "calc(100vw - 32px)",
-                    maxWidth: "360px"
-                };
-            }
-            // 2. Try Top
-            else if (verticalSpaceAbove > 180) {
-                style = {
-                    bottom: window.innerHeight - targetRect.top + 20,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: "calc(100vw - 32px)",
-                    maxWidth: "360px"
-                };
-            }
-            // 3. Fallback: Center (if element takes up whole screen or weird spot)
-            else {
-                style = {
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "calc(100vw - 32px)",
-                    maxWidth: "360px"
-                };
+                style.top = targetRect.bottom + 20;
+            } else if (verticalSpaceAbove > 180) {
+                style.bottom = screenH - targetRect.top + 20;
+            } else {
+                style.top = "50%";
+                style.transform = "translate(-50%, -50%)";
             }
             return style;
         }
 
-        // Desktop Logic
+        const tooltipHalfWidth = 160;
+        const clampX = (x: number) => Math.max(tooltipHalfWidth + 20, Math.min(screenW - tooltipHalfWidth - 20, x));
+        const centerX = targetRect.left + targetRect.width / 2;
+        const safeCenterX = clampX(centerX);
+
         if (placement === "bottom") {
-            style = { top: targetRect.bottom + space, left: targetRect.left + targetRect.width / 2, transform: "translateX(-50%)" };
+            style = { top: targetRect.bottom + space, left: safeCenterX, transform: "translateX(-50%)" };
         } else if (placement === "top") {
-            style = { bottom: window.innerHeight - targetRect.top + space, left: targetRect.left + targetRect.width / 2, transform: "translateX(-50%)" };
+            style = { bottom: screenH - targetRect.top + space, left: safeCenterX, transform: "translateX(-50%)" };
         } else if (placement === "left") {
-            style = { top: targetRect.top + targetRect.height / 2, right: window.innerWidth - targetRect.left + space, transform: "translateY(-50%)" };
+            style = { top: targetRect.top + targetRect.height / 2, right: screenW - targetRect.left + space, transform: "translateY(-50%)" };
         } else if (placement === "right") {
             style = { top: targetRect.top + targetRect.height / 2, left: targetRect.right + space, transform: "translateY(-50%)" };
         } else {
             style = { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
         }
 
-        // Desktop Clamping (Prevent going off screen)
-        // Note: Logic simplified; for full production use floating-ui
         return style;
     };
 
