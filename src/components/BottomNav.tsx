@@ -30,6 +30,7 @@ const BottomNav = () => {
             <RouterNavLink
               key={item.to}
               to={item.to}
+              id={`nav-${item.label.toLowerCase()}`}
               className="relative flex flex-col items-center gap-1 px-3 py-2"
             >
               {isActive && (

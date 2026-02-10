@@ -115,6 +115,9 @@ const AppRoutes = () => {
   );
 };
 
+import { TourProvider } from "@/contexts/TourContext";
+import { AppTour } from "@/components/AppTour";
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -122,7 +125,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
         <AuthProvider>
-          <AppRoutes />
+          <TourProvider>
+            <AppTour />
+            <AppRoutes />
+          </TourProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

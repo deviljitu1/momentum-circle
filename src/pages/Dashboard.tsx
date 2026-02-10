@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Flame, Zap, Target, TrendingUp, Loader2, Trophy, ArrowRight } from "lucide-react";
+import { Plus, Flame, Zap, Target, TrendingUp, Loader2, Trophy, ArrowRight, HelpCircle } from "lucide-react";
 import ProgressRing from "@/components/ProgressRing";
 import FocusTimer from "@/components/FocusTimer";
 import TaskCard from "@/components/TaskCard";
@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { useCategories } from "@/hooks/useCategories";
+import { useTour } from "@/contexts/TourContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -24,9 +25,21 @@ const Dashboard = () => {
   const { createActivity } = useActivityFeed();
   const { leaderboard } = useLeaderboard(); // Fetch leaderboard
   const { categories: categoryData } = useCategories();
+  const { startTour } = useTour();
 
   const [showTimer, setShowTimer] = useState(false);
   const navigate = useNavigate();
+
+  const handleStartTour = () => {
+    startTour([
+      { targetId: "tour-greeting", title: "Welcome!", content: "This is your personal dashboard." },
+      { targetId: "tour-progress", title: "Daily Progress", content: "Track your completed tasks and focus time here." },
+      { targetId: "tour-stats", title: "Quick Stats", content: "See your hours, goal progress, and level at a glance." },
+      { targetId: "tour-add-task", title: "Add Tasks", content: "Quickly add new tasks to your day from here." },
+      { targetId: "tour-leaderboard", title: "Leaderboard", content: "See how you stack up against others." },
+      { targetId: "nav-circles", title: "Communities", content: "Join Circles to find like-minded people.", placement: "top" },
+    ]);
+  };
 
   const categories = categoryData?.length > 0 ? categoryData.map(c => c.name) : ["Study", "Coding", "Gym", "Work", "Reading"];
   const [newTaskOpen, setNewTaskOpen] = useState(false);
@@ -176,14 +189,19 @@ const Dashboard = () => {
   return (
     <div className="pb-24 px-4 pt-6 max-w-6xl mx-auto space-y-8">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between" id="tour-greeting">
         <div>
           <p className="text-sm text-muted-foreground">{greeting()} 👋</p>
           <h1 className="text-2xl font-extrabold">{profile?.display_name || "Let's crush it!"}</h1>
         </div>
-        <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-accent/10 text-accent">
-          <Flame className="w-4 h-4" />
-          <span className="text-sm font-bold">{streak}d</span>
+        <div className="flex items-center gap-3">
+          <button onClick={handleStartTour} className="text-muted-foreground hover:text-foreground transition-colors p-1" title="Start Tour">
+            <HelpCircle className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-accent/10 text-accent">
+            <Flame className="w-4 h-4" />
+            <span className="text-sm font-bold">{streak}d</span>
+          </div>
         </div>
       </motion.div>
 
@@ -192,6 +210,7 @@ const Dashboard = () => {
         <div className="lg:col-span-2 space-y-6">
           {/* Progress Ring */}
           <motion.div
+            id="tour-progress"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.5 }}
@@ -208,7 +227,7 @@ const Dashboard = () => {
           </motion.div>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div id="tour-stats" className="grid grid-cols-3 gap-4">
             {[
               { icon: Zap, label: "Hours", value: `${hoursToday.toFixed(1)}h`, gradient: "gradient-primary" },
               { icon: Target, label: "Goal", value: `${Math.min(100, Math.round((hoursToday / dailyGoal) * 100))}%`, gradient: "gradient-accent" },
@@ -275,7 +294,7 @@ const Dashboard = () => {
           <StepTracker />
 
           {/* Leaderboard Summary */}
-          <div className="bg-card rounded-xl border border-border/50 shadow-card p-4">
+          <div id="tour-leaderboard" className="bg-card rounded-xl border border-border/50 shadow-card p-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-warning" /> Leaderboard
@@ -324,7 +343,7 @@ const Dashboard = () => {
               <h3 className="font-bold text-lg">Today's Tasks</h3>
               <Dialog open={newTaskOpen} onOpenChange={setNewTaskOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10">
+                  <Button id="tour-add-task" variant="ghost" size="sm" className="text-primary hover:bg-primary/10">
                     <Plus className="w-4 h-4 mr-1" /> Add
                   </Button>
                 </DialogTrigger>
