@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Flame, Zap, Target, TrendingUp, Loader2, Trophy, ArrowRight } from "lucide-react";
 import ProgressRing from "@/components/ProgressRing";
 import FocusTimer from "@/components/FocusTimer";
@@ -10,17 +10,41 @@ import { useTasks } from "@/hooks/useTasks";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
+import { useCategories } from "@/hooks/useCategories";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Dashboard = () => {
   const { user, profile } = useAuth();
   const { tasks, isLoading, toggleTask, addTask } = useTasks();
   const { createActivity } = useActivityFeed();
   const { leaderboard } = useLeaderboard(); // Fetch leaderboard
+  const { categories: categoryData } = useCategories();
+
   const [showTimer, setShowTimer] = useState(false);
   const navigate = useNavigate();
+
+  const categories = categoryData?.length > 0 ? categoryData.map(c => c.name) : ["Study", "Coding", "Gym", "Work", "Reading"];
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newCategory, setNewCategory] = useState("Study");
+  const [newMins, setNewMins] = useState("30");
+
+  const handleAddTask = async () => {
+    if (!newTitle.trim()) return;
+    await addTask.mutateAsync({
+      title: newTitle,
+      category: newCategory,
+      estimated_mins: parseInt(newMins) || 30,
+    });
+    setNewTitle("");
+    setNewMins("30");
+    setNewTaskOpen(false);
+  };
 
   const todaysTasks = tasks.filter((t) => {
     const today = new Date().toISOString().split("T")[0];
@@ -298,9 +322,48 @@ const Dashboard = () => {
           <div className="bg-card rounded-xl border border-border/50 shadow-card p-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">Today's Tasks</h3>
-              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10" onClick={() => navigate("/tasks")}>
-                <Plus className="w-4 h-4 mr-1" /> Add
-              </Button>
+              <Dialog open={newTaskOpen} onOpenChange={setNewTaskOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10">
+                    <Plus className="w-4 h-4 mr-1" /> Add
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="rounded-2xl">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-bold">Add New Task</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-2">
+                    <Input
+                      placeholder="Task title..."
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      className="rounded-xl"
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Select value={newCategory} onValueChange={setNewCategory}>
+                        <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        placeholder="Minutes"
+                        value={newMins}
+                        onChange={(e) => setNewMins(e.target.value)}
+                        className="rounded-xl"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleAddTask}
+                      disabled={addTask.isPending}
+                      className="w-full rounded-xl gradient-primary text-primary-foreground border-0"
+                    >
+                      {addTask.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Task"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             {todaysTasks.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground bg-muted/20 rounded-xl border border-dashed border-border">

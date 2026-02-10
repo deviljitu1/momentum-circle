@@ -5,7 +5,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 
 const navItems = [
   { to: "/", icon: Home, label: "Home" },
-  { to: "/tasks", icon: ListTodo, label: "Tasks" },
+
   { to: "/circles", icon: Users, label: "Circles" },
   { to: "/leaderboard", icon: Trophy, label: "Leaderboard" },
   { to: "/insights", icon: Sparkles, label: "Insights" },
