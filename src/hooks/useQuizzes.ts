@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Json } from "@/integrations/supabase/types";
 
 export interface Question {
     question: string;
@@ -40,7 +39,7 @@ export const useQuizzes = (circleId: string) => {
         queryKey: ["quizzes", circleId],
         queryFn: async () => {
             if (!circleId) return [];
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from("quizzes")
                 .select("*")
                 .eq("circle_id", circleId)
@@ -48,10 +47,9 @@ export const useQuizzes = (circleId: string) => {
 
             if (error) throw error;
 
-            // Parse questions JSON
-            return data.map(q => ({
+            return (data || []).map((q: any) => ({
                 ...q,
-                questions: q.questions as unknown as Question[]
+                questions: q.questions as Question[]
             })) as Quiz[];
         },
         enabled: !!circleId,
@@ -61,13 +59,13 @@ export const useQuizzes = (circleId: string) => {
         queryKey: ["quiz_attempts", user?.id],
         queryFn: async () => {
             if (!user) return [];
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from("quiz_attempts")
                 .select("*")
                 .eq("user_id", user.id);
 
             if (error) throw error;
-            return data as QuizAttempt[];
+            return (data || []) as QuizAttempt[];
         },
         enabled: !!user,
     });
@@ -76,12 +74,12 @@ export const useQuizzes = (circleId: string) => {
         mutationFn: async (newQuiz: Omit<Quiz, "id" | "created_at" | "created_by">) => {
             if (!user) throw new Error("Not authenticated");
 
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from("quizzes")
                 .insert({
                     ...newQuiz,
                     created_by: user.id,
-                    questions: newQuiz.questions as unknown as Json
+                    questions: newQuiz.questions
                 })
                 .select()
                 .single();
@@ -93,7 +91,7 @@ export const useQuizzes = (circleId: string) => {
             queryClient.invalidateQueries({ queryKey: ["quizzes", circleId] });
             toast({ title: "Quiz created! 🧠" });
         },
-        onError: (error) => {
+        onError: (error: any) => {
             console.error(error);
             toast({ title: "Error creating quiz", variant: "destructive" });
         },
@@ -103,7 +101,7 @@ export const useQuizzes = (circleId: string) => {
         mutationFn: async ({ quizId, score, totalQuestions }: { quizId: string; score: number; totalQuestions: number }) => {
             if (!user) throw new Error("Not authenticated");
 
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from("quiz_attempts")
                 .insert({
                     quiz_id: quizId,
@@ -117,14 +115,14 @@ export const useQuizzes = (circleId: string) => {
             if (error) throw error;
             return data;
         },
-        onSuccess: (data) => {
+        onSuccess: (data: any) => {
             queryClient.invalidateQueries({ queryKey: ["quiz_attempts"] });
             toast({
                 title: "Quiz completed!",
                 description: `You scored ${data.score}/${data.total_questions} (+${data.score * 10} XP)`
             });
         },
-        onError: (error) => {
+        onError: (error: any) => {
             console.error(error);
             toast({ title: "Error submitting quiz", variant: "destructive" });
         },

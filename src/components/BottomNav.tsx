@@ -1,5 +1,5 @@
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
-import { Home, ListTodo, Trophy, User, Users, ShieldAlert } from "lucide-react";
+import { Home, ListTodo, Trophy, User, Users, ShieldAlert, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAdmin } from "@/hooks/useAdmin";
 
@@ -7,7 +7,7 @@ const navItems = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/tasks", icon: ListTodo, label: "Tasks" },
   { to: "/circles", icon: Users, label: "Circles" },
-  { to: "/leaderboard", icon: Trophy, label: "Rank" },
+  { to: "/insights", icon: Sparkles, label: "Insights" },
   { to: "/profile", icon: User, label: "Profile" },
 ];
 
