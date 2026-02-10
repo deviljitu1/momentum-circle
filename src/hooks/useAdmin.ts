@@ -41,12 +41,37 @@ export const useAdmin = () => {
     const { data: allUsers, isLoading: usersLoading } = useQuery({
         queryKey: ["admin_users"],
         queryFn: async () => {
-            const { data, error } = await supabase
+            // 1. Get profiles
+            const { data: profiles, error: profileError } = await supabase
                 .from("profiles")
                 .select("*")
                 .order("created_at", { ascending: false });
-            if (error) throw error;
-            return data;
+            if (profileError) throw profileError;
+
+            // 2. Get memberships with circle names
+            const { data: memberships, error: memberError } = await supabase
+                .from("circle_members")
+                .select("user_id, circle_id, circles(name)");
+
+            if (memberError) throw memberError;
+
+            // 3. Map memberships to users
+            const userCircles: Record<string, { id: string; name: string }[]> = {};
+            memberships?.forEach((m: any) => {
+                if (!userCircles[m.user_id]) userCircles[m.user_id] = [];
+                if (m.circles) {
+                    userCircles[m.user_id].push({
+                        id: m.circle_id,
+                        name: m.circles.name
+                    });
+                }
+            });
+
+            // 4. Merge
+            return profiles.map(p => ({
+                ...p,
+                joined_circles: userCircles[p.user_id] || []
+            }));
         },
         enabled: !!isAdmin,
     });
@@ -150,7 +175,7 @@ export const useAdmin = () => {
                 throw error;
             }
         },
-        onSuccess: () => onSuccess("Member added", ["admin_circles"]),
+        onSuccess: () => onSuccess("Member added", ["admin_circles", "admin_users"]),
         onError: (e) => onError(e, "adding member"),
     });
 
@@ -163,7 +188,7 @@ export const useAdmin = () => {
                 .eq("user_id", userId);
             if (error) throw error;
         },
-        onSuccess: () => onSuccess("Member removed", ["admin_circles"]),
+        onSuccess: () => onSuccess("Member removed", ["admin_circles", "admin_users"]),
         onError: (e) => onError(e, "removing member"),
     });
 

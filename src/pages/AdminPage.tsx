@@ -249,6 +249,7 @@ const AdminPage = () => {
                                         <TableRow>
                                             <TableHead>User (ID)</TableHead>
                                             <TableHead>Role</TableHead>
+                                            <TableHead>Circles</TableHead>
                                             <TableHead>Joined</TableHead>
                                             <TableHead>Stats</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
@@ -258,31 +259,39 @@ const AdminPage = () => {
                                         {allUsers?.map((user: any) => (
                                             <TableRow key={user.id}>
                                                 <TableCell className="font-medium">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs">
-                                                            {user.display_name?.[0]}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-bold">{user.display_name}</div>
-                                                            <div
-                                                                className="text-[10px] text-muted-foreground font-mono cursor-pointer hover:text-primary transition-colors"
-                                                                onClick={() => {
-                                                                    navigator.clipboard.writeText(user.user_id);
-                                                                    toast({ title: "ID Copied!", description: "User ID copied to clipboard." });
-                                                                }}
-                                                                title="Click to copy ID"
-                                                            >
-                                                                ID: {user.user_id}
-                                                            </div>
-                                                            <div className="text-xs text-muted-foreground">{user.email || "No email"}</div>
-                                                        </div>
-                                                    </div>
+                                                    <div>{user.display_name}</div>
+                                                    <div className="text-xs text-muted-foreground font-mono">{user.user_id.substring(0, 8)}...</div>
                                                 </TableCell>
-                                                {/* ... rest of columns ... */}
                                                 <TableCell>
-                                                    <Badge variant={user.role === 'admin' ? "destructive" : "secondary"}>
-                                                        {user.role || 'user'}
+                                                    <Badge variant={user.role === 'admin' ? "destructive" : "outline"}>
+                                                        {user.role}
                                                     </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                                        {user.joined_circles && user.joined_circles.length > 0 ? (
+                                                            user.joined_circles.map((c: any) => (
+                                                                <div key={c.id} className="inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold transition-colors border-transparent bg-secondary text-secondary-foreground gap-1 group">
+                                                                    {c.name}
+                                                                    <button
+                                                                        type="button"
+                                                                        className="rounded-full opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground p-0.5 transition-all w-3.5 h-3.5 flex items-center justify-center"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            if (confirm(`Remove ${user.display_name} from ${c.name}?`)) {
+                                                                                removeMemberFromCircle.mutate({ circleId: c.id, userId: user.user_id });
+                                                                            }
+                                                                        }}
+                                                                        title="Remove from circle"
+                                                                    >
+                                                                        <X className="h-2.5 w-2.5" />
+                                                                    </button>
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <span className="text-muted-foreground text-xs opacity-50">-</span>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="text-muted-foreground text-sm">
                                                     {user.created_at && formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}
@@ -342,7 +351,7 @@ const AdminPage = () => {
                             </div>
                         )}
                     </div>
-                </TabsContent>
+                </TabsContent >
 
                 <TabsContent value="circles" className="space-y-4">
                     <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
@@ -500,10 +509,10 @@ const AdminPage = () => {
                         </div>
                     </div>
                 </TabsContent>
-            </Tabs>
+            </Tabs >
 
             {/* Edit User Dialog */}
-            <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
+            < Dialog open={editUserOpen} onOpenChange={setEditUserOpen} >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Edit User</DialogTitle>
@@ -516,10 +525,10 @@ const AdminPage = () => {
                         <Button onClick={handleSaveUser} className="w-full">Save Changes</Button>
                     </div>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
 
             {/* Edit Circle Dialog */}
-            <Dialog open={editCircleOpen} onOpenChange={setEditCircleOpen}>
+            < Dialog open={editCircleOpen} onOpenChange={setEditCircleOpen} >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Edit Circle</DialogTitle>
@@ -536,10 +545,10 @@ const AdminPage = () => {
                         <Button onClick={handleSaveCircle} className="w-full">Save Changes</Button>
                     </div>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
 
             {/* Add Member Dialog */}
-            <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
+            < Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen} >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Add Member to {selectedCircleForMember?.name}</DialogTitle>
@@ -559,10 +568,10 @@ const AdminPage = () => {
                         <Button onClick={handleSaveMember} className="w-full">Add Member</Button>
                     </div>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
 
             {/* Add User Dialog */}
-            <Dialog open={addUserOpen} onOpenChange={setAddUserOpen}>
+            < Dialog open={addUserOpen} onOpenChange={setAddUserOpen} >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Add New User</DialogTitle>
@@ -617,10 +626,10 @@ const AdminPage = () => {
                         </Button>
                     </div>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
 
             {/* View Members Dialog */}
-            <Dialog open={viewMembersOpen} onOpenChange={setViewMembersOpen}>
+            < Dialog open={viewMembersOpen} onOpenChange={setViewMembersOpen} >
                 <DialogContent className="max-w-xl">
                     <DialogHeader>
                         <DialogTitle>Members of {selectedCircleForView?.name}</DialogTitle>
@@ -684,7 +693,7 @@ const AdminPage = () => {
                         )}
                     </div>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
 
         </div >
     );
