@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +21,8 @@ export const useCircleChat = (circleId: string) => {
     const { toast } = useToast();
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(true);
+    const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+    const channelRef = useRef<RealtimeChannel | null>(null);
 
     useEffect(() => {
         if (!circleId || !user) return;
@@ -88,42 +91,75 @@ export const useCircleChat = (circleId: string) => {
             .on(
                 "postgres_changes",
                 {
-                    event: "INSERT",
+                    event: "*", // Listen to all events (INSERT, DELETE)
                     schema: "public",
                     table: "circle_messages",
                     filter: `circle_id=eq.${circleId}`,
                 },
                 async (payload) => {
-                    console.log("New message received:", payload);
-                    const newMessage = payload.new as Message;
+                    console.log("Realtime payload:", payload);
 
-                    // Fetch profile for the new message user
-                    const { data: profile } = await supabase
-                        .from("profiles")
-                        .select("display_name, avatar_url")
-                        .eq("user_id", newMessage.user_id)
-                        .maybeSingle();
+                    if (payload.eventType === "INSERT") {
+                        const newMessage = payload.new as Message;
 
-                    if (profile) {
-                        // Create a new object to avoid mutating the payload directly if needed, though usually fine
-                        newMessage.profiles = profile;
-                    }
-
-                    setMessages((prev) => {
-                        // Prevent duplicates
-                        if (prev.some(m => m.id === newMessage.id)) {
-                            return prev;
+                        // Notification if not from self
+                        if (newMessage.user_id !== user.id) {
+                            toast({
+                                title: "New Message",
+                                description: "Someone sent a message in the circle.",
+                            });
                         }
-                        return [...prev, newMessage];
-                    });
+
+                        // Fetch profile for the new message user
+                        const { data: profile } = await supabase
+                            .from("profiles")
+                            .select("display_name, avatar_url")
+                            .eq("user_id", newMessage.user_id)
+                            .maybeSingle();
+
+                        if (profile) {
+                            newMessage.profiles = profile;
+                        }
+
+                        setMessages((prev) => {
+                            if (prev.some(m => m.id === newMessage.id)) return prev;
+                            return [...prev, newMessage];
+                        });
+                    } else if (payload.eventType === "DELETE") {
+                        const deletedId = payload.old.id;
+                        setMessages((prev) => prev.filter(m => m.id !== deletedId));
+                    }
                 }
             )
-            .subscribe((status) => {
-                console.log("Subscription status:", status);
+            .on("presence", { event: "sync" }, () => {
+                const newState = channel.presenceState();
+                const typing = new Set<string>();
+                for (const key in newState) {
+                    const users = newState[key] as any[];
+                    users.forEach(u => {
+                        if (u.user_id !== user.id && u.isTyping) {
+                            typing.add(u.display_name || "Someone");
+                        }
+                    });
+                }
+                setTypingUsers(typing);
+            })
+            .on("presence", { event: "join" }, ({ key, newPresences }) => {
+                // handle join if needed
+            })
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    channelRef.current = channel; // Store channel in ref
+                    // Initialize presence state for the current user
+                    await channel.track({ user_id: user.id, display_name: user.user_metadata?.display_name || "You", isTyping: false });
+                }
             });
 
         return () => {
-            supabase.removeChannel(channel);
+            if (channelRef.current) {
+                supabase.removeChannel(channelRef.current);
+                channelRef.current = null;
+            }
         };
     }, [circleId, user, toast]);
 
@@ -152,5 +188,26 @@ export const useCircleChat = (circleId: string) => {
         }
     };
 
-    return { messages, loading, sendMessage };
+    const clearChat = async () => {
+        if (!user) return;
+        try {
+            const { error } = await (supabase as any).from("circle_messages").delete().eq("circle_id", circleId);
+            if (error) {
+                console.error("Failed to clear chat:", error);
+                throw error;
+            }
+            setMessages([]); // Optimistic clear
+            toast({ title: "Chat cleared", description: "All messages have been deleted." });
+        } catch (error) {
+            toast({ title: "Error clearing chat", description: "Could not delete messages.", variant: "destructive" });
+            throw error;
+        }
+    };
+
+    const sendTyping = async (isTyping: boolean) => {
+        if (!user || !channelRef.current) return;
+        await channelRef.current.track({ user_id: user.id, display_name: user.user_metadata?.display_name || "You", isTyping });
+    };
+
+    return { messages, loading, sendMessage, clearChat, typingUsers, sendTyping };
 };
