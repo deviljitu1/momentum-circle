@@ -36,6 +36,8 @@ const Dashboard = () => {
       { targetId: "tour-progress", title: "Daily Progress", content: "Track your completed tasks and focus time here." },
       { targetId: "tour-stats", title: "Quick Stats", content: "See your hours, goal progress, and level at a glance." },
       { targetId: "tour-add-task", title: "Add Tasks", content: "Quickly add new tasks to your day from here." },
+      { targetId: "tour-activity", title: "Weekly Insights", content: "See your activity trends. Click 'View Insights' for more details." },
+      { targetId: "tour-leaderboard", title: "Leaderboard", content: "See how you stack up against others." },
       { targetId: "nav-home", title: "Home", content: "Return to your dashboard anytime.", placement: "top" },
       { targetId: "nav-circles", title: "Circles", content: "Join communities and find accountability partners.", placement: "top" },
       { targetId: "nav-leaderboard", title: "Leaderboard", content: "Compete globally and track your ranking.", placement: "top" },
@@ -262,12 +264,18 @@ const Dashboard = () => {
 
           {/* Weekly Chart */}
           <motion.div
+            id="tour-activity"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="bg-card rounded-xl p-6 border border-border/50 shadow-card"
           >
-            <h3 className="font-bold text-lg mb-4">Weekly Activity</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg">Weekly Activity</h3>
+              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10" onClick={() => navigate("/insights")}>
+                View Insights <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
             <div className="flex items-end justify-between gap-3 h-32">
               {weeklyHours.map((d, i) => {
                 const height = Math.max(4, (d.hours / 8) * 100);
