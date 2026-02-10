@@ -24,7 +24,7 @@ const LeaderboardPage = () => {
   const podiumOrder = top3.length === 3 ? [top3[1], top3[0], top3[2]] : top3;
 
   return (
-    <div className="pb-24 px-4 pt-6 max-w-lg mx-auto space-y-5">
+    <div className="pb-24 px-4 pt-6 max-w-4xl mx-auto space-y-5">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <h1 className="text-2xl font-extrabold">Leaderboard</h1>
         <p className="text-sm text-muted-foreground">Compete with your friends</p>
@@ -36,9 +36,8 @@ const LeaderboardPage = () => {
           <button
             key={p}
             onClick={() => setPeriod(p)}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${
-              period === p ? "bg-card shadow-card text-foreground" : "text-muted-foreground"
-            }`}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${period === p ? "bg-card shadow-card text-foreground" : "text-muted-foreground"
+              }`}
           >
             {p}
           </button>

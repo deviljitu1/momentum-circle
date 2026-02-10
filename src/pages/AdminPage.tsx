@@ -243,101 +243,103 @@ const AdminPage = () => {
                                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                             </div>
                         ) : (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>User (ID)</TableHead>
-                                        <TableHead>Role</TableHead>
-                                        <TableHead>Joined</TableHead>
-                                        <TableHead>Stats</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {allUsers?.map((user: any) => (
-                                        <TableRow key={user.id}>
-                                            <TableCell className="font-medium">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs">
-                                                        {user.display_name?.[0]}
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-bold">{user.display_name}</div>
-                                                        <div
-                                                            className="text-[10px] text-muted-foreground font-mono cursor-pointer hover:text-primary transition-colors"
-                                                            onClick={() => {
-                                                                navigator.clipboard.writeText(user.user_id);
-                                                                toast({ title: "ID Copied!", description: "User ID copied to clipboard." });
-                                                            }}
-                                                            title="Click to copy ID"
-                                                        >
-                                                            ID: {user.user_id}
-                                                        </div>
-                                                        <div className="text-xs text-muted-foreground">{user.email || "No email"}</div>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            {/* ... rest of columns ... */}
-                                            <TableCell>
-                                                <Badge variant={user.role === 'admin' ? "destructive" : "secondary"}>
-                                                    {user.role || 'user'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground text-sm">
-                                                {user.created_at && formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}
-                                            </TableCell>
-                                            <TableCell className="text-sm">
-                                                <div className="flex gap-3">
-                                                    <span className="text-orange-500 font-bold">{user.xp || 0} XP</span>
-                                                    <span className="text-muted-foreground">Lvl {user.level || 1}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleEditUser(user)}
-                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                                    >
-                                                        <Edit className="w-4 h-4" />
-                                                    </Button>
-
-                                                    {/* Promote/Demote Toggle */}
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className={`h-8 w-8 ${user.role === 'admin' ? 'text-destructive' : 'text-primary'}`}
-                                                        onClick={() => {
-                                                            const newRole = user.role === 'admin' ? 'user' : 'admin';
-                                                            if (confirm(`Change ${user.display_name}'s role to ${newRole}?`)) {
-                                                                updateUserRole.mutate({ userId: user.user_id, role: newRole });
-                                                            }
-                                                        }}
-                                                        disabled={user.email === 'admin@momentum.com'} // Prevent blocking super admin
-                                                    >
-                                                        <Shield className="w-4 h-4" />
-                                                    </Button>
-
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                        onClick={() => {
-                                                            if (confirm(`Delete ${user.display_name}? This cannot be undone.`)) {
-                                                                deleteUser.mutate(user.user_id);
-                                                            }
-                                                        }}
-                                                        disabled={user.role === 'admin'}
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>User (ID)</TableHead>
+                                            <TableHead>Role</TableHead>
+                                            <TableHead>Joined</TableHead>
+                                            <TableHead>Stats</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {allUsers?.map((user: any) => (
+                                            <TableRow key={user.id}>
+                                                <TableCell className="font-medium">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs">
+                                                            {user.display_name?.[0]}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-bold">{user.display_name}</div>
+                                                            <div
+                                                                className="text-[10px] text-muted-foreground font-mono cursor-pointer hover:text-primary transition-colors"
+                                                                onClick={() => {
+                                                                    navigator.clipboard.writeText(user.user_id);
+                                                                    toast({ title: "ID Copied!", description: "User ID copied to clipboard." });
+                                                                }}
+                                                                title="Click to copy ID"
+                                                            >
+                                                                ID: {user.user_id}
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground">{user.email || "No email"}</div>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                {/* ... rest of columns ... */}
+                                                <TableCell>
+                                                    <Badge variant={user.role === 'admin' ? "destructive" : "secondary"}>
+                                                        {user.role || 'user'}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground text-sm">
+                                                    {user.created_at && formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}
+                                                </TableCell>
+                                                <TableCell className="text-sm">
+                                                    <div className="flex gap-3">
+                                                        <span className="text-orange-500 font-bold">{user.xp || 0} XP</span>
+                                                        <span className="text-muted-foreground">Lvl {user.level || 1}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleEditUser(user)}
+                                                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                        >
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+
+                                                        {/* Promote/Demote Toggle */}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className={`h-8 w-8 ${user.role === 'admin' ? 'text-destructive' : 'text-primary'}`}
+                                                            onClick={() => {
+                                                                const newRole = user.role === 'admin' ? 'user' : 'admin';
+                                                                if (confirm(`Change ${user.display_name}'s role to ${newRole}?`)) {
+                                                                    updateUserRole.mutate({ userId: user.user_id, role: newRole });
+                                                                }
+                                                            }}
+                                                            disabled={user.email === 'admin@momentum.com'} // Prevent blocking super admin
+                                                        >
+                                                            <Shield className="w-4 h-4" />
+                                                        </Button>
+
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                            onClick={() => {
+                                                                if (confirm(`Delete ${user.display_name}? This cannot be undone.`)) {
+                                                                    deleteUser.mutate(user.user_id);
+                                                                }
+                                                            }}
+                                                            disabled={user.role === 'admin'}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         )}
                     </div>
                 </TabsContent>
@@ -352,102 +354,95 @@ const AdminPage = () => {
                                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                             </div>
                         ) : (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Code</TableHead>
-                                        <TableHead>Members</TableHead>
-                                        <TableHead>Created</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {allCircles?.map((circle: any) => (
-                                        <TableRow key={circle.id}>
-                                            <TableCell className="font-medium">
-                                                <div>
-                                                    <div className="font-bold">{circle.name}</div>
-                                                    <div className="text-xs text-muted-foreground line-clamp-1">{circle.description}</div>
-                                                </div>
-                                            </TableCell>
-                                            {/* ... rest of columns ... */}
-                                            <TableCell>
-                                                <Badge variant="outline" className="font-mono">
-                                                    {circle.invite_code}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div
-                                                    className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors group py-1"
-                                                    onClick={() => handleViewMembers(circle)}
-                                                    title="Click to manage members"
-                                                >
-                                                    <div className="flex items-center gap-1 bg-muted/40 px-2 py-1 rounded-md group-hover:bg-primary/10">
-                                                        <Users className="w-3 h-3 text-muted-foreground group-hover:text-primary" />
-                                                        <span className="font-medium">{circle.member_count}</span>
-                                                    </div>
-                                                    <Eye className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground text-sm">
-                                                {formatDistanceToNow(new Date(circle.created_at), { addSuffix: true })}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => handleViewMembers(circle)}
-                                                        title="View Members"
-                                                    >
-                                                        <Eye className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => handleViewMembers(circle)}
-                                                        title="View Members"
-                                                    >
-                                                        <Eye className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => handleAddMember(circle)}
-                                                        title="Add Member"
-                                                    >
-                                                        <Plus className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleEditCircle(circle)}
-                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                                    >
-                                                        <Edit className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                        onClick={() => {
-                                                            if (confirm(`Delete ${circle.name}?`)) {
-                                                                deleteCircle.mutate(circle.id);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>Code</TableHead>
+                                            <TableHead>Members</TableHead>
+                                            <TableHead>Created</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {allCircles?.map((circle: any) => (
+                                            <TableRow key={circle.id}>
+                                                <TableCell className="font-medium">
+                                                    <div>
+                                                        <div className="font-bold">{circle.name}</div>
+                                                        <div className="text-xs text-muted-foreground line-clamp-1">{circle.description}</div>
+                                                    </div>
+                                                </TableCell>
+                                                {/* ... rest of columns ... */}
+                                                <TableCell>
+                                                    <Badge variant="outline" className="font-mono">
+                                                        {circle.invite_code}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div
+                                                        className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors group py-1"
+                                                        onClick={() => handleViewMembers(circle)}
+                                                        title="Click to manage members"
+                                                    >
+                                                        <div className="flex items-center gap-1 bg-muted/40 px-2 py-1 rounded-md group-hover:bg-primary/10">
+                                                            <Users className="w-3 h-3 text-muted-foreground group-hover:text-primary" />
+                                                            <span className="font-medium">{circle.member_count}</span>
+                                                        </div>
+                                                        <Eye className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground text-sm">
+                                                    {formatDistanceToNow(new Date(circle.created_at), { addSuffix: true })}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            onClick={() => handleViewMembers(circle)}
+                                                            title="View Members"
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            onClick={() => handleAddMember(circle)}
+                                                            title="Add Member"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleEditCircle(circle)}
+                                                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                        >
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                            onClick={() => {
+                                                                if (confirm(`Delete ${circle.name}?`)) {
+                                                                    deleteCircle.mutate(circle.id);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         )}
                     </div>
                 </TabsContent>

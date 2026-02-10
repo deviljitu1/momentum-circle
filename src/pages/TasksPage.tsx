@@ -56,7 +56,7 @@ const TasksPage = () => {
   }
 
   return (
-    <div className="pb-24 px-4 pt-6 max-w-lg mx-auto space-y-5">
+    <div className="pb-24 px-4 pt-6 max-w-6xl mx-auto space-y-6">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold">Tasks</h1>
@@ -113,8 +113,8 @@ const TasksPage = () => {
             key={cat}
             onClick={() => setFilter(cat)}
             className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${filter === cat
-                ? "gradient-primary text-primary-foreground"
-                : "bg-card border border-border/50 text-muted-foreground hover:text-foreground"
+              ? "gradient-primary text-primary-foreground"
+              : "bg-card border border-border/50 text-muted-foreground hover:text-foreground"
               }`}
           >
             {cat}
@@ -123,8 +123,8 @@ const TasksPage = () => {
       </div>
 
       {/* Task List */}
-      <div className="space-y-2">
-        <AnimatePresence>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <AnimatePresence mode="popLayout">
           {filtered.map((task, i) => (
             <TaskCard
               key={task.id}
@@ -140,8 +140,8 @@ const TasksPage = () => {
           ))}
         </AnimatePresence>
         {filtered.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <p className="text-4xl mb-2">📋</p>
+          <div className="col-span-full text-center py-12 text-muted-foreground bg-muted/10 rounded-xl border border-dashed border-border">
+            <p className="text-4xl mb-3">📋</p>
             <p className="font-medium">No tasks yet</p>
             <p className="text-sm">Add one to get started!</p>
           </div>

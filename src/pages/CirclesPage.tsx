@@ -284,7 +284,7 @@ const CirclesPage = () => {
 
   if (selectedCircle) {
     return (
-      <div className="pb-24 px-4 pt-6 max-w-lg mx-auto space-y-5">
+      <div className="pb-24 px-4 pt-6 max-w-4xl mx-auto space-y-5">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3">
           <button onClick={() => setSelectedCircle(null)} className="text-muted-foreground hover:text-foreground">
             ← Back
@@ -354,7 +354,7 @@ const CirclesPage = () => {
   }
 
   return (
-    <div className="pb-24 px-4 pt-6 max-w-lg mx-auto space-y-5">
+    <div className="pb-24 px-4 pt-6 max-w-6xl mx-auto space-y-6">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold">Circles</h1>
@@ -436,7 +436,7 @@ const CirclesPage = () => {
           <p className="text-sm">Create one or join with an invite code!</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {circles.map((circle) => (
             <CircleCard
               key={circle.id}
