@@ -30,30 +30,56 @@ export const useActivityFeed = (circleId?: string) => {
   const { data: activities = [], isLoading } = useQuery({
     queryKey: ["activity_feed", circleId],
     queryFn: async () => {
+      // 1. Fetch activities
       let query = supabase
         .from("activity_feed")
-        .select(`
-          *,
-          profiles:user_id (
-            display_name,
-            avatar_url
-          ),
-          reactions:activity_reactions (
-            id,
-            emoji,
-            user_id
-          )
-        `)
+        .select("*")
         .order("created_at", { ascending: false })
         .limit(50);
-      
+
       if (circleId) {
         query = query.eq("circle_id", circleId);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as unknown as ActivityItem[];
+      const { data: activitiesData, error: activitiesError } = await query;
+      if (activitiesError) throw activitiesError;
+
+      if (!activitiesData || activitiesData.length === 0) return [];
+
+      // 2. Fetch profiles
+      const userIds = [...new Set(activitiesData.map(a => a.user_id))];
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .in("user_id", userIds);
+
+      if (profilesError) throw profilesError;
+
+      const profilesMap = new Map(profiles?.map(p => [p.user_id, p]));
+
+      // 3. Fetch reactions
+      const activityIds = activitiesData.map(a => a.id);
+      const { data: reactions, error: reactionsError } = await supabase
+        .from("activity_reactions")
+        .select("id, emoji, user_id, activity_id")
+        .in("activity_id", activityIds);
+
+      if (reactionsError) throw reactionsError;
+
+      // Group reactions by activity_id
+      const reactionsMap = new Map<string, any[]>();
+      reactions?.forEach(r => {
+        const existing = reactionsMap.get(r.activity_id) || [];
+        existing.push(r);
+        reactionsMap.set(r.activity_id, existing);
+      });
+
+      // 4. Merge
+      return activitiesData.map(a => ({
+        ...a,
+        profiles: profilesMap.get(a.user_id),
+        reactions: reactionsMap.get(a.id) || []
+      })) as ActivityItem[];
     },
     enabled: !!user,
   });
@@ -88,7 +114,7 @@ export const useActivityFeed = (circleId?: string) => {
   const addReaction = useMutation({
     mutationFn: async ({ activityId, emoji }: { activityId: string; emoji: string }) => {
       if (!user) throw new Error("Not authenticated");
-      
+
       // Check if reaction exists
       const { data: existing } = await supabase
         .from("activity_reactions")
@@ -97,7 +123,7 @@ export const useActivityFeed = (circleId?: string) => {
         .eq("user_id", user.id)
         .eq("emoji", emoji)
         .maybeSingle();
-      
+
       if (existing) {
         // Remove reaction
         await supabase.from("activity_reactions").delete().eq("id", existing.id);
@@ -123,7 +149,7 @@ export const useActivityFeed = (circleId?: string) => {
     circleId?: string
   ) => {
     if (!user) return;
-    
+
     await supabase.from("activity_feed").insert({
       user_id: user.id,
       circle_id: circleId || null,
