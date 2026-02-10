@@ -26,12 +26,8 @@ export const useCircleChat = (circleId: string) => {
 
         const fetchMessages = async () => {
             try {
-<<<<<<< HEAD
                 // 1. Get messages
-                const { data: messagesData, error: messagesError } = await supabase
-=======
-                const { data, error } = await (supabase as any)
->>>>>>> 856b99bab64988fcc07e05b28723a51ad3a13d81
+                const { data: messagesData, error: messagesError } = await (supabase as any)
                     .from("circle_messages")
                     .select("*")
                     .eq("circle_id", circleId)
@@ -45,7 +41,7 @@ export const useCircleChat = (circleId: string) => {
                 }
 
                 // 2. Get profiles
-                const userIds = [...new Set(messagesData.map((m) => m.user_id))];
+                const userIds = [...new Set(messagesData.map((m: any) => m.user_id))] as string[];
                 const { data: profiles, error: profilesError } = await supabase
                     .from("profiles")
                     .select("user_id, display_name, avatar_url")

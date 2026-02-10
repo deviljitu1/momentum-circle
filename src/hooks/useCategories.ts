@@ -9,10 +9,6 @@ export const useCategories = () => {
     const { data: categories = [], isLoading } = useQuery({
         queryKey: ["task_categories"],
         queryFn: async () => {
-<<<<<<< HEAD
-=======
-            // @ts-ignore
->>>>>>> 856b99bab64988fcc07e05b28723a51ad3a13d81
             const { data, error } = await (supabase as any)
                 .from("task_categories")
                 .select("*")
