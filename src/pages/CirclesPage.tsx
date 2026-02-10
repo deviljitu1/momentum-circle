@@ -6,7 +6,7 @@ import { useActivityFeed, ActivityItem } from "@/hooks/useActivityFeed";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
@@ -370,6 +370,7 @@ const CirclesPage = () => {
             <DialogContent className="rounded-2xl">
               <DialogHeader>
                 <DialogTitle>Join a Circle</DialogTitle>
+                <DialogDescription className="sr-only">Enter an invite code to join an existing circle</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 pt-2">
                 <Input
@@ -398,6 +399,7 @@ const CirclesPage = () => {
             <DialogContent className="rounded-2xl">
               <DialogHeader>
                 <DialogTitle>Create a Circle</DialogTitle>
+                <DialogDescription className="sr-only">Create a new circle to compete with friends</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 pt-2">
                 <Input
