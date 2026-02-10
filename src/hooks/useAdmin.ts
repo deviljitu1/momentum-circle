@@ -14,13 +14,25 @@ export const useAdmin = () => {
         queryKey: ["is_admin", user?.id],
         queryFn: async () => {
             if (!user) return false;
-            // @ts-ignore
-            const { data, error } = await supabase.rpc("is_admin");
-            if (error) {
-                console.error("Error checking admin status:", error);
-                return false;
+
+            // 1. Super Admin Bypass
+            if (user.email === "admin@momentum.com") return true;
+
+            // 2. Check Profile Role
+            const { data: profile, error } = await supabase
+                .from("profiles")
+                .select("role")
+                .eq("user_id", user.id)
+                .maybeSingle();
+
+            if (!error && profile?.role === "admin") {
+                return true;
             }
-            return data;
+
+            // 3. RPC Fallback (Legacy)
+            // @ts-ignore
+            const { data: rpcData } = await supabase.rpc("is_admin");
+            return !!rpcData;
         },
         enabled: !!user,
     });
