@@ -41,7 +41,6 @@ const Dashboard = () => {
       { targetId: "nav-home", title: "Home", content: "Return to your dashboard anytime.", placement: "top" },
       { targetId: "nav-circles", title: "Circles", content: "Join communities and find accountability partners.", placement: "top" },
       { targetId: "nav-leaderboard", title: "Leaderboard", content: "Compete globally and track your ranking.", placement: "top" },
-      { targetId: "nav-insights", title: "Insights", content: "Analyze your long-term productivity trends.", placement: "top" },
       { targetId: "nav-profile", title: "Profile", content: "Manage your account and settings.", placement: "top" },
     ]);
   };
