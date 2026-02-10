@@ -11,6 +11,8 @@ export interface LeaderboardEntry {
   total_hours: number;
   streak_days: number;
   level: number;
+  target_hours: number;
+  percentage: number;
 }
 
 export const useLeaderboard = (circleId?: string, period: "daily" | "weekly" = "daily") => {
@@ -75,18 +77,30 @@ export const useLeaderboard = (circleId?: string, period: "daily" | "weekly" = "
       });
 
       // 5. Build Leaderboard
-      const leaderboard: LeaderboardEntry[] = profiles.map((p) => ({
-        user_id: p.user_id,
-        display_name: p.display_name,
-        avatar_url: p.avatar_url,
-        total_points: userStats[p.user_id]?.points || 0,
-        total_hours: userStats[p.user_id]?.hours || 0,
-        streak_days: p.streak_days || 0,
-        level: p.level || 1,
-      }));
+      const leaderboard: LeaderboardEntry[] = profiles.map((p) => {
+        // Simulate a stable target for each user (4 to 10 hours)
+        // In production, this would come from p.daily_goal
+        const stableSeed = p.user_id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const targetHours = 4 + (stableSeed % 7);
 
-      // Sort by points desc
-      return leaderboard.sort((a, b) => b.total_points - a.total_points);
+        const totalHours = userStats[p.user_id]?.hours || 0;
+        const percentage = totalHours > 0 ? (totalHours / targetHours) * 100 : 0;
+
+        return {
+          user_id: p.user_id,
+          display_name: p.display_name,
+          avatar_url: p.avatar_url,
+          total_points: userStats[p.user_id]?.points || 0,
+          total_hours: totalHours,
+          streak_days: p.streak_days || 0,
+          level: p.level || 1,
+          target_hours: targetHours,
+          percentage: Math.round(percentage),
+        };
+      });
+
+      // Sort by percentage desc
+      return leaderboard.sort((a, b) => b.percentage - a.percentage);
     },
     enabled: !!user,
   });
