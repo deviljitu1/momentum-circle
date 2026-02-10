@@ -3,6 +3,7 @@ import { Send, Loader2, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCircleChat } from "@/hooks/useCircleChat";
 import { useCircles } from "@/hooks/useCircles";
+import { useAdmin } from "@/hooks/useAdmin";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow, format } from "date-fns";
@@ -11,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export const CircleChat = ({ circleId }: { circleId: string }) => {
     const { user } = useAuth();
+    const { isAdmin } = useAdmin();
     const { messages, loading, sendMessage, clearChat, typingUsers, sendTyping } = useCircleChat(circleId);
     const { circles } = useCircles(); // To check if creator
     const isCreator = circles.find(c => c.id === circleId)?.is_creator;
@@ -79,7 +81,7 @@ export const CircleChat = ({ circleId }: { circleId: string }) => {
         <div className="flex flex-col h-[600px] border border-border/50 rounded-xl overflow-hidden bg-card shadow-sm">
             <div className="p-3 border-b bg-muted/20 flex items-center justify-between">
                 <h3 className="font-semibold text-sm">Circle Chat</h3>
-                {isCreator && (
+                {(isCreator || isAdmin) && (
                     <Button
                         variant="ghost"
                         size="icon"
