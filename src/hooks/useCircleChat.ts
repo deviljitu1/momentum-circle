@@ -26,29 +26,38 @@ export const useCircleChat = (circleId: string) => {
 
         const fetchMessages = async () => {
             try {
-                const { data, error } = await supabase
+                // 1. Get messages
+                const { data: messagesData, error: messagesError } = await supabase
                     .from("circle_messages")
-                    .select(`
-            *,
-            profiles:user_id (
-              display_name,
-              avatar_url
-            )
-          `)
+                    .select("*")
                     .eq("circle_id", circleId)
                     .order("created_at", { ascending: true });
 
-                if (error) throw error;
+                if (messagesError) throw messagesError;
 
-                // Since we don't have a direct FK for profiling in messages table yet ( wait, I didn't add one in migration? )
-                // Ah, I added FK to circle_members. But for messages, I only added "user_id references auth.users".
-                // I need to add FK for messages too if I want to join profiles easily!
-                // Wait, standard Supabase pattern allows joining profiles if user_id is the key. 
-                // Let's assume it works or I'll fix it in the component.
-                // Actually, let's fix the migration plan if needed.
-                // But for now, let's assume standard join works if keys align.
+                if (!messagesData || messagesData.length === 0) {
+                    setMessages([]);
+                    return;
+                }
 
-                setMessages(data as unknown as Message[]);
+                // 2. Get profiles
+                const userIds = [...new Set(messagesData.map((m) => m.user_id))];
+                const { data: profiles, error: profilesError } = await supabase
+                    .from("profiles")
+                    .select("user_id, display_name, avatar_url")
+                    .in("user_id", userIds);
+
+                if (profilesError) throw profilesError;
+
+                // 3. Merge
+                const profilesMap = new Map(profiles.map((p) => [p.user_id, p]));
+
+                const combinedMessages = messagesData.map((m) => ({
+                    ...m,
+                    profiles: profilesMap.get(m.user_id)
+                }));
+
+                setMessages(combinedMessages as Message[]);
             } catch (error) {
                 console.error("Error fetching messages:", error);
                 toast({
@@ -85,10 +94,17 @@ export const useCircleChat = (circleId: string) => {
                         .single();
 
                     if (profile) {
+                        // Create a new object to avoid mutating the payload directly if needed, though usually fine
                         newMessage.profiles = profile;
                     }
 
-                    setMessages((prev) => [...prev, newMessage]);
+                    setMessages((prev) => {
+                        // Prevent duplicates
+                        if (prev.some(m => m.id === newMessage.id)) {
+                            return prev;
+                        }
+                        return [...prev, newMessage];
+                    });
                 }
             )
             .subscribe();

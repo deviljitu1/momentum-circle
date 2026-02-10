@@ -173,21 +173,31 @@ export const useCircles = () => {
   });
 
   const getCircleMembers = async (circleId: string): Promise<CircleMember[]> => {
-    const { data, error } = await supabase
+    // 1. Get members
+    const { data: members, error: membersError } = await supabase
       .from("circle_members")
-      .select(`
-        *,
-        profiles:user_id (
-          display_name,
-          avatar_url,
-          level,
-          streak_days
-        )
-      `)
+      .select("*")
       .eq("circle_id", circleId);
 
-    if (error) throw error;
-    return data as unknown as CircleMember[];
+    if (membersError) throw membersError;
+    if (!members || members.length === 0) return [];
+
+    // 2. Get profiles
+    const userIds = members.map((m) => m.user_id);
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("user_id, display_name, avatar_url, level, streak_days")
+      .in("user_id", userIds);
+
+    if (profilesError) throw profilesError;
+
+    // 3. Merge
+    const profilesMap = new Map(profiles.map((p) => [p.user_id, p]));
+
+    return members.map((m) => ({
+      ...m,
+      profiles: profilesMap.get(m.user_id),
+    })) as CircleMember[];
   };
 
   const removeMember = useMutation({

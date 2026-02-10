@@ -145,20 +145,47 @@ const MembersList = ({
   isCreator: boolean;
   onRemoveMember: (userId: string) => void;
 }) => {
+  const { user } = useAuth();
   const [members, setMembers] = useState<import("@/hooks/useCircles").CircleMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getCircleMembers(circleId).then((data) => {
-      setMembers(data);
-      setLoading(false);
-    });
+    setLoading(true);
+    getCircleMembers(circleId)
+      .then((data) => {
+        setMembers(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load members:", err);
+        setError("Failed to load members");
+        setLoading(false);
+      });
   }, [circleId, getCircleMembers]);
 
   if (loading) {
     return (
       <div className="flex justify-center py-8">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8 text-destructive">
+        <p>{error}</p>
+        <Button variant="link" onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    );
+  }
+
+  if (members.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+        <p>No members found</p>
       </div>
     );
   }
@@ -174,13 +201,17 @@ const MembersList = ({
           key={member.id}
           className="bg-card rounded-xl p-3 border border-border/50 flex items-center gap-3 hover:bg-muted/30 transition-colors"
         >
-          <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold shadow-sm">
-            {member.profiles?.display_name?.[0] || "?"}
+          <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold shadow-sm overflow-hidden">
+            {member.profiles?.avatar_url ? (
+              <img src={member.profiles.avatar_url} alt={member.profiles.display_name} className="w-full h-full object-cover" />
+            ) : (
+              <span>{member.profiles?.display_name?.[0] || "?"}</span>
+            )}
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm truncate">{member.profiles?.display_name}</span>
+              <span className="font-bold text-sm truncate">{member.profiles?.display_name || "Unknown Member"}</span>
               {index === 0 && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 font-bold border border-yellow-500/20">
                   Leader
@@ -201,28 +232,18 @@ const MembersList = ({
               <div className="text-[10px] text-muted-foreground">
                 Lvl {member.profiles?.level || 1}
               </div>
-              {isCreator && member.user_id !== (member as any).user_id ? ( // TODO: Fix user check
-                // Actually we need current user ID to not remove self, but let's just show for all others
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-destructive hover:bg-destructive/10"
-                  onClick={() => onRemoveMember(member.user_id)}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              ) : null}
-              {isCreator && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-destructive hover:bg-destructive/10"
-                  onClick={() => onRemoveMember(member.user_id)}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              )}
             </div>
+            {isCreator && user?.id !== member.user_id && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:bg-destructive/10 -mr-2"
+                onClick={() => onRemoveMember(member.user_id)}
+                title="Remove Member"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
       ))}
