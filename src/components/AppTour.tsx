@@ -58,7 +58,6 @@ export const AppTour = () => {
             return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
         }
 
-        const space = 15;
         const placement = step.placement || "bottom";
         const isMobile = window.innerWidth < 768;
         const screenW = window.innerWidth;
@@ -67,27 +66,35 @@ export const AppTour = () => {
         let style: React.CSSProperties = {};
 
         if (isMobile) {
-            const verticalSpaceBelow = screenH - targetRect.bottom;
-            const verticalSpaceAbove = targetRect.top;
+            // Mobile Strategy: Floating Sheet
+            // If target is in the top 2/3rds of screen, show tooltip at BOTTOM.
+            // If target is in the bottom 1/3rd, show tooltip at TOP.
+            const targetCenterY = targetRect.top + targetRect.height / 2;
+            const isTopArea = targetCenterY < screenH * 0.6;
 
             style = {
+                position: "fixed",
                 left: "50%",
                 transform: "translateX(-50%)",
-                width: "calc(100vw - 32px)",
-                maxWidth: "360px"
+                width: "90%",
+                maxWidth: "400px",
+                zIndex: 110,
+                margin: "0 auto",
             };
 
-            if (verticalSpaceBelow > 180) {
-                style.top = targetRect.bottom + 20;
-            } else if (verticalSpaceAbove > 180) {
-                style.bottom = screenH - targetRect.top + 20;
+            if (isTopArea) {
+                style.bottom = "20px";
+                style.top = "auto";
             } else {
-                style.top = "50%";
-                style.transform = "translate(-50%, -50%)";
+                style.top = "80px"; // Give space for header/notch
+                style.bottom = "auto";
             }
+
             return style;
         }
 
+        // DESKTOP LOGIC
+        const space = 15;
         const tooltipHalfWidth = 160;
         const clampX = (x: number) => Math.max(tooltipHalfWidth + 20, Math.min(screenW - tooltipHalfWidth - 20, x));
         const centerX = targetRect.left + targetRect.width / 2;
