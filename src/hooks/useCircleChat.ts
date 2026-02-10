@@ -33,28 +33,38 @@ export const useCircleChat = (circleId: string) => {
                     .eq("circle_id", circleId)
                     .order("created_at", { ascending: true });
 
-                if (messagesError) throw messagesError;
+                if (messagesError) {
+                    console.error("Supabase error fetching messages:", messagesError);
+                    throw messagesError;
+                }
 
                 if (!messagesData || messagesData.length === 0) {
                     setMessages([]);
                     return;
                 }
 
-                // 2. Get profiles
+                // 2. Get profiles (safe fetch)
                 const userIds = [...new Set(messagesData.map((m: any) => m.user_id))] as string[];
-                const { data: profiles, error: profilesError } = await supabase
-                    .from("profiles")
-                    .select("user_id, display_name, avatar_url")
-                    .in("user_id", userIds);
+                let profilesMap = new Map();
 
-                if (profilesError) throw profilesError;
+                try {
+                    const { data: profiles, error: profilesError } = await supabase
+                        .from("profiles")
+                        .select("user_id, display_name, avatar_url")
+                        .in("user_id", userIds);
+
+                    if (profiles) {
+                        profilesMap = new Map(profiles.map((p) => [p.user_id, p]));
+                    }
+                    if (profilesError) console.warn("Error fetching profiles for chat:", profilesError);
+                } catch (err) {
+                    console.warn("Failed to fetch profiles:", err);
+                }
 
                 // 3. Merge
-                const profilesMap = new Map(profiles.map((p) => [p.user_id, p]));
-
-                const combinedMessages = messagesData.map((m) => ({
+                const combinedMessages = messagesData.map((m: any) => ({
                     ...m,
-                    profiles: profilesMap.get(m.user_id)
+                    profiles: profilesMap.get(m.user_id) || { display_name: "User", avatar_url: null }
                 }));
 
                 setMessages(combinedMessages as Message[]);
@@ -84,6 +94,7 @@ export const useCircleChat = (circleId: string) => {
                     filter: `circle_id=eq.${circleId}`,
                 },
                 async (payload) => {
+                    console.log("New message received:", payload);
                     const newMessage = payload.new as Message;
 
                     // Fetch profile for the new message user
@@ -91,7 +102,7 @@ export const useCircleChat = (circleId: string) => {
                         .from("profiles")
                         .select("display_name, avatar_url")
                         .eq("user_id", newMessage.user_id)
-                        .single();
+                        .maybeSingle();
 
                     if (profile) {
                         // Create a new object to avoid mutating the payload directly if needed, though usually fine
@@ -107,7 +118,9 @@ export const useCircleChat = (circleId: string) => {
                     });
                 }
             )
-            .subscribe();
+            .subscribe((status) => {
+                console.log("Subscription status:", status);
+            });
 
         return () => {
             supabase.removeChannel(channel);
@@ -118,13 +131,17 @@ export const useCircleChat = (circleId: string) => {
         if (!user || !content.trim()) return;
 
         try {
+            console.log("Sending message...", { circleId, userId: user.id, content });
             const { error } = await (supabase as any).from("circle_messages").insert({
                 circle_id: circleId,
                 user_id: user.id,
                 content: content.trim(),
             });
 
-            if (error) throw error;
+            if (error) {
+                console.error("Supabase insert error:", error);
+                throw error;
+            }
         } catch (error) {
             console.error("Error sending message:", error);
             toast({
