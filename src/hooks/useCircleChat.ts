@@ -17,7 +17,7 @@ export interface Message {
 }
 
 export const useCircleChat = (circleId: string) => {
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
     const { toast } = useToast();
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(true);
@@ -168,16 +168,35 @@ export const useCircleChat = (circleId: string) => {
 
         try {
             console.log("Sending message...", { circleId, userId: user.id, content });
-            const { error } = await (supabase as any).from("circle_messages").insert({
-                circle_id: circleId,
-                user_id: user.id,
-                content: content.trim(),
-            });
+
+            // Insert and retrieve the message
+            const { data: newMessage, error } = await (supabase as any)
+                .from("circle_messages")
+                .insert({
+                    circle_id: circleId,
+                    user_id: user.id,
+                    content: content.trim(),
+                })
+                .select()
+                .single();
 
             if (error) {
                 console.error("Supabase insert error:", error);
                 throw error;
             }
+
+            // Attach profile data for UI immediately
+            const messageWithProfile: Message = {
+                ...newMessage,
+                profiles: {
+                    display_name: profile?.display_name || user.user_metadata?.display_name || "You",
+                    avatar_url: profile?.avatar_url || user.user_metadata?.avatar_url || null
+                }
+            };
+
+            // Update state immediately
+            setMessages((prev) => [...prev, messageWithProfile]);
+
         } catch (error) {
             console.error("Error sending message:", error);
             toast({
