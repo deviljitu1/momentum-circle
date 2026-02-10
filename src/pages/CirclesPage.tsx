@@ -13,6 +13,8 @@ import { formatDistanceToNow } from "date-fns";
 import { CircleChat } from "@/components/CircleChat";
 import { QuizzesTab } from "@/components/QuizzesTab";
 import { useAdmin } from "@/hooks/useAdmin";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const reactionEmojis = ["🔥", "💪", "👏", "🎉", "❤️", "🚀"];
 
@@ -323,6 +325,9 @@ const MembersList = ({
 
 const CirclesPage = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const { isAdmin } = useAdmin();
+  const queryClient = useQueryClient();
   const { circles, isLoading, createCircle, joinCircle, getCircleMembers, removeMember } = useCircles();
   const [selectedCircle, setSelectedCircle] = useState<(Circle & { is_creator?: boolean }) | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -348,6 +353,24 @@ const CirclesPage = () => {
     setJoinOpen(false);
   };
 
+  const handleDeleteCircle = async () => {
+    if (!selectedCircle) return;
+    if (confirm("Are you sure you want to delete this circle? This action cannot be undone and will remove all members and data.")) {
+      try {
+        const { error } = await supabase.from('circles').delete().eq('id', selectedCircle.id);
+        if (error) throw error;
+
+        // Optimistic update
+        queryClient.invalidateQueries({ queryKey: ["circles"] });
+        setSelectedCircle(null);
+        toast({ title: "Circle deleted successfully" });
+      } catch (error) {
+        console.error("Delete error:", error);
+        toast({ title: "Failed to delete circle", description: "You might not have permission.", variant: "destructive" });
+      }
+    }
+  };
+
   const handleReact = (activityId: string, emoji: string) => {
     addReaction.mutate({ activityId, emoji });
   };
@@ -363,6 +386,16 @@ const CirclesPage = () => {
             <h1 className="text-xl font-extrabold">{selectedCircle.name}</h1>
             <p className="text-sm text-muted-foreground">{selectedCircle.member_count || 0} members</p>
           </div>
+          {(selectedCircle.is_creator || isAdmin) && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteCircle}
+              className="gap-2"
+            >
+              <Trash2 className="w-4 h-4" /> Delete Circle
+            </Button>
+          )}
         </motion.div>
 
         {/* Invite Code */}
