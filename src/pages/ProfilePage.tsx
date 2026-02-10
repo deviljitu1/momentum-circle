@@ -46,6 +46,21 @@ const ProfilePage = () => {
     enabled: !!user,
   });
 
+  const { data: activityHistory = [] } = useQuery({
+    queryKey: ["history", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await supabase
+        .from("activity_feed")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
@@ -178,6 +193,49 @@ const ProfilePage = () => {
                   </div>
                 );
               })}
+            </div>
+          </motion.div>
+
+          {/* History / Activity Feed */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-card rounded-xl p-6 border border-border/50 shadow-card"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Clock className="w-5 h-5 text-muted-foreground" />
+                History
+              </h3>
+            </div>
+
+            <div className="space-y-4">
+              {activityHistory.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">No recent history</p>
+              ) : (
+                activityHistory.map((item) => (
+                  <div key={item.id} className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="mt-1 bg-primary/10 p-2 rounded-full">
+                      {item.activity_type === 'task_completed' && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                      {item.activity_type === 'focus_session' && <Flame className="w-4 h-4 text-orange-500" />}
+                      {item.activity_type === 'badge_earned' && <span className="text-sm">🏆</span>}
+                      {item.activity_type === 'level_up' && <span className="text-sm">⭐</span>}
+                      {!['task_completed', 'focus_session', 'badge_earned', 'level_up'].includes(item.activity_type) && <div className="w-4 h-4 bg-gray-400 rounded-full" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{item.title}</p>
+                      {item.description && <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>}
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        {new Date(item.created_at).toLocaleDateString()} at {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    {item.points_earned && (
+                      <span className="text-xs font-bold text-green-500">+{item.points_earned} pts</span>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </motion.div>
         </div>
