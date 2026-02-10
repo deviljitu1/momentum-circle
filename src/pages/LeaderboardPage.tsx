@@ -88,7 +88,9 @@ const LeaderboardPage = () => {
                     <span className={`text-xs font-semibold truncate max-w-[70px] text-center ${isYou ? "text-primary" : ""}`}>
                       {isYou ? "You" : entry.display_name}
                     </span>
-                    <span className="text-xs text-muted-foreground">{entry.total_points} pts</span>
+                    <span className="text-xs text-muted-foreground">
+                      {entry.percentage !== undefined ? `${entry.percentage}%` : `${entry.total_points} pts`}
+                    </span>
                     <div
                       className={`w-16 mt-2 rounded-t-lg ${actualRank === 1 ? "gradient-hero" : actualRank === 2 ? "bg-primary/30" : "bg-accent/30"}`}
                       style={{ height: heights[i] }}
@@ -111,6 +113,8 @@ const LeaderboardPage = () => {
                   points: entry.total_points,
                   hours: entry.total_hours,
                   streak: entry.streak_days,
+                  percentage: entry.percentage,
+                  target: entry.target_hours,
                 }}
                 rank={i + 1}
                 maxPoints={maxPoints}
