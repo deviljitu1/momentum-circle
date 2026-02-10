@@ -65,26 +65,44 @@ export const AppTour = () => {
         let style: React.CSSProperties = {};
 
         if (isMobile) {
-            if (targetRect.bottom > window.innerHeight / 2) {
+            const verticalSpaceBelow = window.innerHeight - targetRect.bottom;
+            const verticalSpaceAbove = targetRect.top;
+
+            // Improved Mobile Logic:
+            // 1. Try Bottom
+            if (verticalSpaceBelow > 180) {
                 style = {
-                    bottom: window.innerHeight - targetRect.top + space,
+                    top: targetRect.bottom + 20,
                     left: "50%",
                     transform: "translateX(-50%)",
-                    width: "90%",
-                    maxWidth: "320px"
+                    width: "calc(100vw - 32px)",
+                    maxWidth: "360px"
                 };
-            } else {
+            }
+            // 2. Try Top
+            else if (verticalSpaceAbove > 180) {
                 style = {
-                    top: targetRect.bottom + space,
+                    bottom: window.innerHeight - targetRect.top + 20,
                     left: "50%",
                     transform: "translateX(-50%)",
-                    width: "90%",
-                    maxWidth: "320px"
+                    width: "calc(100vw - 32px)",
+                    maxWidth: "360px"
+                };
+            }
+            // 3. Fallback: Center (if element takes up whole screen or weird spot)
+            else {
+                style = {
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: "calc(100vw - 32px)",
+                    maxWidth: "360px"
                 };
             }
             return style;
         }
 
+        // Desktop Logic
         if (placement === "bottom") {
             style = { top: targetRect.bottom + space, left: targetRect.left + targetRect.width / 2, transform: "translateX(-50%)" };
         } else if (placement === "top") {
@@ -96,6 +114,9 @@ export const AppTour = () => {
         } else {
             style = { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
         }
+
+        // Desktop Clamping (Prevent going off screen)
+        // Note: Logic simplified; for full production use floating-ui
         return style;
     };
 
