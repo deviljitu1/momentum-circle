@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Plus, Link, Copy, Check, MessageCircle, Loader2, Trash2 } from "lucide-react";
+import { Users, Plus, Link, Copy, Check, MessageCircle, Loader2, Trash2, UserPlus } from "lucide-react";
 import { useCircles, Circle } from "@/hooks/useCircles";
 import { useActivityFeed, ActivityItem } from "@/hooks/useActivityFeed";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { CircleChat } from "@/components/CircleChat";
 import { QuizzesTab } from "@/components/QuizzesTab";
+import { useAdmin } from "@/hooks/useAdmin";
 
 const reactionEmojis = ["🔥", "💪", "👏", "🎉", "❤️", "🚀"];
 
@@ -134,6 +135,64 @@ const CircleCard = ({ circle, onClick, memberCount }: { circle: Circle; onClick:
   );
 };
 
+const AddMemberDialog = ({ circleId, open, onOpenChange }: { circleId: string, open: boolean, onOpenChange: (open: boolean) => void }) => {
+  const { allUsers, addMemberToCircle } = useAdmin();
+  const [search, setSearch] = useState("");
+  const { toast } = useToast();
+
+  // Filter logic
+  const filteredUsers = allUsers?.filter(u =>
+    (u.display_name?.toLowerCase().includes(search.toLowerCase()) || false)
+  ) || [];
+
+  const handleAdd = async (userId: string) => {
+    try {
+      await addMemberToCircle.mutateAsync({ circleId, userId });
+      toast({ title: "Member added successfully" });
+      onOpenChange(false);
+    } catch (e) {
+      // Error handled by hook
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Member to Circle</DialogTitle>
+          <DialogDescription>Search for a user to add to this circle</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <Input
+            placeholder="Search users by name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="max-h-[300px] overflow-y-auto space-y-2">
+            {filteredUsers.length === 0 ? (
+              <div className="text-center text-muted-foreground py-4">No users found</div>
+            ) : (
+              filteredUsers.slice(0, 50).map(user => (
+                <div key={user.user_id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold">
+                      {user.display_name?.[0] || "?"}
+                    </div>
+                    <div className="text-sm font-medium">{user.display_name}</div>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => handleAdd(user.user_id)}>
+                    Add
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const MembersList = ({
   circleId,
   getCircleMembers,
@@ -146,9 +205,11 @@ const MembersList = ({
   onRemoveMember: (userId: string) => void;
 }) => {
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const [members, setMembers] = useState<import("@/hooks/useCircles").CircleMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -162,7 +223,7 @@ const MembersList = ({
         setError("Failed to load members");
         setLoading(false);
       });
-  }, [circleId, getCircleMembers]);
+  }, [circleId, getCircleMembers, addMemberOpen]); // Reload when add dialog closes (simple way to refresh)
 
   if (loading) {
     return (
@@ -181,73 +242,82 @@ const MembersList = ({
     );
   }
 
-  if (members.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        <p>No members found</p>
-      </div>
-    );
-  }
-
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-3"
-    >
-      {members.map((member, index) => (
-        <div
-          key={member.id}
-          className="bg-card rounded-xl p-3 border border-border/50 flex items-center gap-3 hover:bg-muted/30 transition-colors"
-        >
-          <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold shadow-sm overflow-hidden">
-            {member.profiles?.avatar_url ? (
-              <img src={member.profiles.avatar_url} alt={member.profiles.display_name} className="w-full h-full object-cover" />
-            ) : (
-              <span>{member.profiles?.display_name?.[0] || "?"}</span>
-            )}
-          </div>
+    <div className="space-y-3">
+      {isAdmin && (
+        <>
+          <Button onClick={() => setAddMemberOpen(true)} className="w-full mb-2" variant="outline">
+            <UserPlus className="w-4 h-4 mr-2" /> Add Member (Admin)
+          </Button>
+          <AddMemberDialog circleId={circleId} open={addMemberOpen} onOpenChange={setAddMemberOpen} />
+        </>
+      )}
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm truncate">{member.profiles?.display_name || "Unknown Member"}</span>
-              {index === 0 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 font-bold border border-yellow-500/20">
-                  Leader
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Joined {formatDistanceToNow(new Date(member.joined_at), { addSuffix: true })}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="flex items-center justify-end gap-1 text-xs font-medium text-orange-500">
-                <span>{member.profiles?.streak_days || 0}</span>
-                <span>🔥</span>
-              </div>
-              <div className="text-[10px] text-muted-foreground">
-                Lvl {member.profiles?.level || 1}
-              </div>
-            </div>
-            {isCreator && user?.id !== member.user_id && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:bg-destructive/10 -mr-2"
-                onClick={() => onRemoveMember(member.user_id)}
-                title="Remove Member"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
+      {members.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p>No members found</p>
         </div>
-      ))}
-    </motion.div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="space-y-3"
+        >
+          {members.map((member, index) => (
+            <div
+              key={member.id}
+              className="bg-card rounded-xl p-3 border border-border/50 flex items-center gap-3 hover:bg-muted/30 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold shadow-sm overflow-hidden">
+                {member.profiles?.avatar_url ? (
+                  <img src={member.profiles.avatar_url} alt={member.profiles.display_name} className="w-full h-full object-cover" />
+                ) : (
+                  <span>{member.profiles?.display_name?.[0] || "?"}</span>
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm truncate">{member.profiles?.display_name || "Unknown Member"}</span>
+                  {index === 0 && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 font-bold border border-yellow-500/20">
+                      Leader
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Joined {formatDistanceToNow(new Date(member.joined_at), { addSuffix: true })}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <div className="flex items-center justify-end gap-1 text-xs font-medium text-orange-500">
+                    <span>{member.profiles?.streak_days || 0}</span>
+                    <span>🔥</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Lvl {member.profiles?.level || 1}
+                  </div>
+                </div>
+                {(isCreator || isAdmin) && user?.id !== member.user_id && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:bg-destructive/10 -mr-2"
+                    onClick={() => onRemoveMember(member.user_id)}
+                    title="Remove Member"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </motion.div>
+      )}
+    </div>
   );
 };
 
