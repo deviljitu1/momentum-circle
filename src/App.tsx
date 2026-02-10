@@ -11,6 +11,7 @@ import LeaderboardPage from "./pages/LeaderboardPage";
 import ProfilePage from "./pages/ProfilePage";
 import CirclesPage from "./pages/CirclesPage";
 import AuthPage from "./pages/AuthPage";
+import InsightsPage from "./pages/InsightsPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -71,6 +72,22 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <CirclesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/leaderboard"
+          element={
+            <ProtectedRoute>
+              <LeaderboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/insights"
+          element={
+            <ProtectedRoute>
+              <InsightsPage />
             </ProtectedRoute>
           }
         />

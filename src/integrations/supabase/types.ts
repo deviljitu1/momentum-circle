@@ -179,6 +179,39 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_steps: {
+        Row: {
+          created_at: string
+          date: string
+          goal: number
+          id: string
+          source: string
+          steps: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          goal?: number
+          id?: string
+          source?: string
+          steps?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          goal?: number
+          id?: string
+          source?: string
+          steps?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       focus_sessions: {
         Row: {
           duration_seconds: number
