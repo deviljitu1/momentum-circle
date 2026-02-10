@@ -114,6 +114,7 @@ const LeaderboardPage = () => {
                 }}
                 rank={i + 1}
                 maxPoints={maxPoints}
+                prevUserPoints={i > 0 ? leaderboard[i - 1].total_points : undefined}
               />
             ))}
           </div>

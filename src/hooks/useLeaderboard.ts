@@ -22,36 +22,48 @@ export const useLeaderboard = (circleId?: string, period: "daily" | "weekly" = "
     queryFn: async () => {
       // Get date range
       const now = new Date();
-      const startDate = period === "daily" 
+      const startDate = period === "daily"
         ? now.toISOString().split("T")[0]
         : new Date(now.setDate(now.getDate() - 7)).toISOString().split("T")[0];
 
-      // If we have a circle, get members first
-      let userIds: string[] = [];
+      // 1. Get Target Users
+      let targetUserIds: string[] | null = null;
       if (circleId) {
         const { data: members } = await supabase
           .from("circle_members")
           .select("user_id")
           .eq("circle_id", circleId);
-        
-        userIds = members?.map(m => m.user_id) || [];
-        if (userIds.length === 0) return [];
+
+        if (!members || members.length === 0) return [];
+        targetUserIds = members.map(m => m.user_id);
       }
 
-      // Get daily stats aggregated
-      let query = supabase
+      // 2. Fetch Profiles (Apply limit for global to avoid performance hit, e.g., 100)
+      let profilesQuery = supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url, level, streak_days, total_hours");
+
+      if (targetUserIds) {
+        profilesQuery = profilesQuery.in("user_id", targetUserIds);
+      } else {
+        profilesQuery = profilesQuery.limit(100); // Global limit
+      }
+
+      const { data: profiles, error: profilesError } = await profilesQuery;
+      if (profilesError) throw profilesError;
+      if (!profiles || profiles.length === 0) return [];
+
+      // 3. Fetch Stats for these users
+      const profileIds = profiles.map(p => p.user_id);
+      const { data: stats, error: statsError } = await supabase
         .from("daily_stats")
         .select("user_id, points, hours_focused, tasks_completed")
-        .gte("date", startDate);
-      
-      if (circleId && userIds.length > 0) {
-        query = query.in("user_id", userIds);
-      }
+        .gte("date", startDate)
+        .in("user_id", profileIds);
 
-      const { data: stats, error: statsError } = await query;
       if (statsError) throw statsError;
 
-      // Aggregate by user
+      // 4. Aggregate stats
       const userStats: Record<string, { points: number; hours: number; tasks: number }> = {};
       stats?.forEach((s) => {
         if (!userStats[s.user_id]) {
@@ -62,35 +74,8 @@ export const useLeaderboard = (circleId?: string, period: "daily" | "weekly" = "
         userStats[s.user_id].tasks += s.tasks_completed || 0;
       });
 
-      // Get profile info
-      const userIdsToFetch = Object.keys(userStats);
-      if (userIdsToFetch.length === 0) {
-        // No stats yet, just show profiles with 0 points
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, display_name, avatar_url, level, streak_days, total_hours")
-          .limit(20);
-        
-        return (profiles || []).map(p => ({
-          user_id: p.user_id,
-          display_name: p.display_name,
-          avatar_url: p.avatar_url,
-          total_points: 0,
-          total_hours: Number(p.total_hours) || 0,
-          streak_days: p.streak_days || 0,
-          level: p.level || 1,
-        }));
-      }
-
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, avatar_url, level, streak_days")
-        .in("user_id", userIdsToFetch);
-      
-      if (profilesError) throw profilesError;
-
-      // Combine and sort
-      const leaderboard: LeaderboardEntry[] = (profiles || []).map((p) => ({
+      // 5. Build Leaderboard
+      const leaderboard: LeaderboardEntry[] = profiles.map((p) => ({
         user_id: p.user_id,
         display_name: p.display_name,
         avatar_url: p.avatar_url,
@@ -100,6 +85,7 @@ export const useLeaderboard = (circleId?: string, period: "daily" | "weekly" = "
         level: p.level || 1,
       }));
 
+      // Sort by points desc
       return leaderboard.sort((a, b) => b.total_points - a.total_points);
     },
     enabled: !!user,
