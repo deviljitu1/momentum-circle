@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query"; // Import useQuery
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2, Shield, ShieldAlert, Users, Circle as CircleIcon, Edit, Plus, ListTodo, Eye, X } from "lucide-react";
+import { Loader2, Trash2, Shield, ShieldAlert, Users, Circle as CircleIcon, Edit, Plus, ListTodo, Eye, EyeOff, X } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -81,6 +81,7 @@ const AdminPage = () => {
     const [newUserEmail, setNewUserEmail] = useState("");
     const [newUserPass, setNewUserPass] = useState("");
     const [newUserDisplayName, setNewUserDisplayName] = useState("");
+    const [newUserShowPassword, setNewUserShowPassword] = useState(false);
 
     if (isAdminLoading) {
         return (
@@ -583,12 +584,26 @@ const AdminPage = () => {
                         </div>
                         <div className="space-y-2">
                             <Label>Password</Label>
-                            <Input
-                                type="password"
-                                value={newUserPass}
-                                onChange={(e) => setNewUserPass(e.target.value)}
-                                placeholder="Minimum 6 characters"
-                            />
+                            <div className="relative">
+                                <Input
+                                    type={newUserShowPassword ? "text" : "password"}
+                                    value={newUserPass}
+                                    onChange={(e) => setNewUserPass(e.target.value)}
+                                    placeholder="Minimum 6 characters"
+                                    className="pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                                    onClick={() => setNewUserShowPassword(!newUserShowPassword)}
+                                >
+                                    {newUserShowPassword ? (
+                                        <EyeOff className="w-4 h-4" />
+                                    ) : (
+                                        <Eye className="w-4 h-4" />
+                                    )}
+                                </button>
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label>Display Name</Label>
