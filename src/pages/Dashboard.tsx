@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, Flame, Zap, Target, TrendingUp, Loader2 } from "lucide-react";
+import { Plus, Flame, Zap, Target, TrendingUp, Loader2, Trophy, ArrowRight } from "lucide-react";
 import ProgressRing from "@/components/ProgressRing";
 import FocusTimer from "@/components/FocusTimer";
 import TaskCard from "@/components/TaskCard";
@@ -9,6 +9,7 @@ import AISuggestionsCard from "@/components/AISuggestionsCard";
 import { useTasks } from "@/hooks/useTasks";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
+import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +18,7 @@ const Dashboard = () => {
   const { user, profile } = useAuth();
   const { tasks, isLoading, toggleTask, addTask } = useTasks();
   const { createActivity } = useActivityFeed();
+  const { leaderboard } = useLeaderboard(); // Fetch leaderboard
   const [showTimer, setShowTimer] = useState(false);
   const navigate = useNavigate();
 
@@ -247,6 +249,50 @@ const Dashboard = () => {
 
           {/* Step Tracker */}
           <StepTracker />
+
+          {/* Leaderboard Summary */}
+          <div className="bg-card rounded-xl border border-border/50 shadow-card p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-warning" /> Leaderboard
+              </h3>
+              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10" onClick={() => navigate("/leaderboard")}>
+                View All <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {leaderboard.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Join the competition!</p>
+              ) : (
+                leaderboard.slice(0, 3).map((entry, index) => {
+                  const isYou = entry.user_id === user?.id;
+                  return (
+                    <div key={entry.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="w-6 text-center font-bold text-muted-foreground text-sm">
+                        #{index + 1}
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-bold text-xs overflow-hidden">
+                        {entry.avatar_url ? (
+                          <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          entry.display_name[0]
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm font-semibold truncate ${isYou ? "text-primary" : ""}`}>
+                            {isYou ? "You" : entry.display_name}
+                          </span>
+                          <span className="text-xs font-bold text-muted-foreground">{entry.total_points} pts</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
 
           {/* Today's Tasks */}
           <div className="bg-card rounded-xl border border-border/50 shadow-card p-4">

@@ -46,7 +46,7 @@ export const useLeaderboard = (circleId?: string, period: "daily" | "weekly" = "
       if (targetUserIds) {
         profilesQuery = profilesQuery.in("user_id", targetUserIds);
       } else {
-        profilesQuery = profilesQuery.limit(100); // Global limit
+        profilesQuery = profilesQuery.limit(1000); // Increased limit to show more users
       }
 
       const { data: profiles, error: profilesError } = await profilesQuery;
