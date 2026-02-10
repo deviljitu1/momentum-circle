@@ -4,6 +4,8 @@ import { Plus, Flame, Zap, Target, TrendingUp, Loader2 } from "lucide-react";
 import ProgressRing from "@/components/ProgressRing";
 import FocusTimer from "@/components/FocusTimer";
 import TaskCard from "@/components/TaskCard";
+import StepTracker from "@/components/StepTracker";
+import AISuggestionsCard from "@/components/AISuggestionsCard";
 import { useTasks } from "@/hooks/useTasks";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
@@ -233,6 +235,12 @@ const Dashboard = () => {
           })}
         </div>
       </motion.div>
+
+      {/* Step Tracker */}
+      <StepTracker />
+
+      {/* AI Suggestions */}
+      <AISuggestionsCard />
 
       {/* Today's Tasks */}
       <div>
