@@ -26,13 +26,15 @@ const ChatHistoryViewer = ({
     onClearBefore: (date: Date) => void;
     onClearDate: (date: Date) => void;
 }) => {
-    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState<string>("");
 
     // Filter messages for the selected date
-    const filteredMessages = messages.filter(m => {
-        const msgDate = new Date(m.created_at).toISOString().split('T')[0];
-        return msgDate === selectedDate;
-    });
+    const filteredMessages = selectedDate
+        ? messages.filter(m => {
+            const msgDate = new Date(m.created_at).toISOString().split('T')[0];
+            return msgDate === selectedDate;
+        })
+        : messages;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -42,7 +44,7 @@ const ChatHistoryViewer = ({
                         <History className="w-5 h-5" /> Chat History Manager
                     </DialogTitle>
                     <DialogDescription>
-                        Review and manage chat logs by date.
+                        Review and manage chat logs. {selectedDate ? `Showing messages for ${selectedDate}` : "Showing all history."}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -50,16 +52,29 @@ const ChatHistoryViewer = ({
                     {/* Controls */}
                     <div className="flex items-center justify-between bg-muted/30 p-3 rounded-lg border">
                         <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium">View Date:</span>
-                            <Input
-                                type="date"
-                                value={selectedDate}
-                                onChange={(e) => setSelectedDate(e.target.value)}
-                                className="w-auto h-8"
-                            />
+                            <span className="text-sm font-medium">Filter Date:</span>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    type="date"
+                                    value={selectedDate}
+                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                    className="w-auto h-8"
+                                />
+                                {selectedDate && (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => setSelectedDate("")}
+                                        title="Clear filter"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                         <div className="flex gap-2">
-                            {filteredMessages.length > 0 && (
+                            {selectedDate && filteredMessages.length > 0 && (
                                 <Button
                                     variant="destructive"
                                     size="sm"
@@ -80,7 +95,7 @@ const ChatHistoryViewer = ({
                         {filteredMessages.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-50">
                                 <MessageCircle className="w-10 h-10 mb-2" />
-                                <p>No messages found on this date</p>
+                                <p>No messages found {selectedDate ? "on this date" : ""}</p>
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -93,7 +108,9 @@ const ChatHistoryViewer = ({
                                         <div className="flex-1 overflow-hidden">
                                             <div className="flex items-center gap-2 mb-0.5">
                                                 <span className="font-bold truncate">{msg.profiles?.display_name}</span>
-                                                <span className="text-xs text-muted-foreground flex-shrink-0">{format(new Date(msg.created_at), "HH:mm")}</span>
+                                                <span className="text-xs text-muted-foreground flex-shrink-0">
+                                                    {format(new Date(msg.created_at), "PP HH:mm")}
+                                                </span>
                                             </div>
                                             <p className="text-foreground/90 break-words leading-relaxed">{msg.content}</p>
                                         </div>
