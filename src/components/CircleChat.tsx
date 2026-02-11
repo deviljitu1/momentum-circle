@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2, Trash2, History } from "lucide-react";
+import { Send, Loader2, Trash2, History, MessageCircle, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCircleChat } from "@/hooks/useCircleChat";
 import { useCircles } from "@/hooks/useCircles";
@@ -11,67 +11,114 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
-const ManageChatHistoryDialog = ({ open, onOpenChange, onClearAll, onClearBefore }: {
+const ChatHistoryViewer = ({
+    open,
+    onOpenChange,
+    messages,
+    onClearAll,
+    onClearBefore,
+    onClearDate
+}: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    messages: any[];
     onClearAll: () => void;
     onClearBefore: (date: Date) => void;
+    onClearDate: (date: Date) => void;
 }) => {
-    const [date, setDate] = useState<string>("");
+    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
-    const handleClearBefore = () => {
-        if (!date) return;
-        if (confirm(`Are you sure you want to delete all messages sent before ${date}? This action cannot be undone.`)) {
-            onClearBefore(new Date(date));
-            onOpenChange(false);
-            setDate("");
-        }
-    };
+    // Filter messages for the selected date
+    const filteredMessages = messages.filter(m => {
+        const msgDate = new Date(m.created_at).toISOString().split('T')[0];
+        return msgDate === selectedDate;
+    });
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="max-w-2xl h-[80vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle>Manage Chat History</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                        <History className="w-5 h-5" /> Chat History Manager
+                    </DialogTitle>
                     <DialogDescription>
-                        Clear outdated messages to free up storage space.
+                        Review and manage chat logs by date.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-6 py-4">
-                    <div className="space-y-3">
-                        <label className="text-sm font-medium text-foreground">Clear messages older than:</label>
-                        <div className="flex gap-2">
+                <div className="flex-1 flex flex-col gap-4 overflow-hidden pt-2">
+                    {/* Controls */}
+                    <div className="flex items-center justify-between bg-muted/30 p-3 rounded-lg border">
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium">View Date:</span>
                             <Input
                                 type="date"
-                                value={date}
-                                onChange={e => setDate(e.target.value)}
-                                className="flex-1"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                className="w-auto h-8"
                             />
-                            <Button variant="outline" onClick={handleClearBefore} disabled={!date} className="text-destructive hover:text-destructive border-destructive/20 hover:bg-destructive/10">
-                                Delete
-                            </Button>
                         </div>
-                        <p className="text-[10px] text-muted-foreground">
-                            All messages sent prior to the selected date (00:00) will be permanently removed.
-                        </p>
+                        <div className="flex gap-2">
+                            {filteredMessages.length > 0 && (
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => {
+                                        if (confirm(`Delete all messages on ${selectedDate}? This cannot be undone.`)) {
+                                            onClearDate(new Date(selectedDate));
+                                        }
+                                    }}
+                                >
+                                    <Trash2 className="w-4 h-4 mr-2" /> Clear This Day
+                                </Button>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="pt-4 border-t relative">
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
-                            OR
+                    {/* Preview Area */}
+                    <div className="flex-1 border rounded-lg overflow-y-auto p-4 bg-muted/10">
+                        {filteredMessages.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-50">
+                                <MessageCircle className="w-10 h-10 mb-2" />
+                                <p>No messages found on this date</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {filteredMessages.map(msg => (
+                                    <div key={msg.id} className="flex gap-3 text-sm">
+                                        <Avatar className="w-8 h-8 mt-1 border border-border">
+                                            <AvatarImage src={msg.profiles?.avatar_url} />
+                                            <AvatarFallback>{msg.profiles?.display_name?.[0]}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 overflow-hidden">
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                                <span className="font-bold truncate">{msg.profiles?.display_name}</span>
+                                                <span className="text-xs text-muted-foreground flex-shrink-0">{format(new Date(msg.created_at), "HH:mm")}</span>
+                                            </div>
+                                            <p className="text-foreground/90 break-words leading-relaxed">{msg.content}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Global Actions */}
+                    <div className="border-t pt-4 flex justify-between items-center px-1">
+                        <div className="text-xs text-muted-foreground">
+                            Total stored messages: {messages.length}
                         </div>
                         <Button
-                            variant="destructive"
-                            className="w-full mt-2"
+                            variant="ghost"
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                             onClick={() => {
-                                if (confirm("Are you sure you want to delete ALL messages in this chat? This cannot be undone.")) {
+                                if (confirm("CRITICAL: This will delete ALL chat history permanently for everyone. Continue?")) {
                                     onClearAll();
                                     onOpenChange(false);
                                 }
                             }}
                         >
-                            <Trash2 className="w-4 h-4 mr-2" /> Clear Entire Chat History
+                            <Trash2 className="w-4 h-4 mr-2" /> Delete Everything
                         </Button>
                     </div>
                 </div>
@@ -83,7 +130,7 @@ const ManageChatHistoryDialog = ({ open, onOpenChange, onClearAll, onClearBefore
 export const CircleChat = ({ circleId }: { circleId: string }) => {
     const { user } = useAuth();
     const { isAdmin } = useAdmin();
-    const { messages, loading, sendMessage, clearChat, deleteMessagesBefore, typingUsers, sendTyping } = useCircleChat(circleId);
+    const { messages, loading, sendMessage, clearChat, deleteMessagesBefore, deleteMessagesOnDate, typingUsers, sendTyping } = useCircleChat(circleId);
     const { circles } = useCircles(); // To check if creator
     const isCreator = circles.find(c => c.id === circleId)?.is_creator;
 
@@ -157,11 +204,13 @@ export const CircleChat = ({ circleId }: { circleId: string }) => {
                         >
                             <History className="w-4 h-4" />
                         </Button>
-                        <ManageChatHistoryDialog
+                        <ChatHistoryViewer
                             open={manageOpen}
                             onOpenChange={setManageOpen}
+                            messages={messages}
                             onClearAll={clearChat}
                             onClearBefore={deleteMessagesBefore}
+                            onClearDate={deleteMessagesOnDate}
                         />
                     </>
                 )}

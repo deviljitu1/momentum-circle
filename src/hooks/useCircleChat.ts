@@ -245,5 +245,29 @@ export const useCircleChat = (circleId: string) => {
         await channelRef.current.track({ user_id: user.id, display_name: user.user_metadata?.display_name || "You", isTyping });
     };
 
-    return { messages, loading, sendMessage, clearChat, deleteMessagesBefore, typingUsers, sendTyping };
+    const deleteMessagesOnDate = async (date: Date) => {
+        if (!user) return;
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        try {
+            const { error } = await (supabase as any)
+                .from("circle_messages")
+                .delete()
+                .eq("circle_id", circleId)
+                .gte("created_at", startOfDay.toISOString())
+                .lte("created_at", endOfDay.toISOString());
+
+            if (error) throw error;
+            toast({ title: "History Cleared", description: "Messages for selected date deleted." });
+        } catch (error) {
+            console.error("Delete error:", error);
+            toast({ title: "Error", description: "Failed to delete messages.", variant: "destructive" });
+        }
+    };
+
+    return { messages, loading, sendMessage, clearChat, deleteMessagesBefore, deleteMessagesOnDate, typingUsers, sendTyping };
 };
