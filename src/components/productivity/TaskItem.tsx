@@ -17,7 +17,7 @@ interface TaskItemProps {
 }
 
 export const TaskItem = ({ task, log, date }: TaskItemProps) => {
-    const { updateLog } = useProductivityMutations();
+    const { updateLog, deleteTask } = useProductivityMutations();
     const [val, setVal] = useState<string>(log?.actual_value?.toString() || "");
     const [completed, setCompleted] = useState<boolean>(log?.completed || false);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -89,8 +89,16 @@ export const TaskItem = ({ task, log, date }: TaskItemProps) => {
                         </p>
                     </div>
                 </div>
-                <div className="text-right">
+                <div className="flex items-center gap-2">
                     <span className="text-lg font-bold text-primary">{Math.round(progress)}%</span>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteTask.mutate(task.id)}
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </Button>
                 </div>
             </div>
 

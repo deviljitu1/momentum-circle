@@ -1,22 +1,22 @@
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import {
     format,
     startOfMonth,
     endOfMonth,
     eachDayOfInterval,
     isToday,
+    isBefore,
     subMonths,
     addMonths,
     getDay,
 } from "date-fns";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, Plane, MoreHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, Plane } from "lucide-react";
 import { useProductivityHistory, useDailySummary, useProductivityMutations, useChallengeStats } from "@/hooks/useProductivity";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -24,14 +24,18 @@ import { Label } from "@/components/ui/label";
 
 const ConsistencyCalendar = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
-    const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
 
     // Leave Dialog State
     const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [leaveType, setLeaveType] = useState("Sick Leave");
     const [leaveReason, setLeaveReason] = useState("");
-    const [isMarkingLeave, setIsMarkingLeave] = useState(true); // true = turning leave ON, false = turning OFF
+    const [isMarkingLeave, setIsMarkingLeave] = useState(true);
+
+    // Range selection state
+    const [rangeMode, setRangeMode] = useState(false);
+    const [rangeStart, setRangeStart] = useState<string | null>(null);
+    const [rangeEnd, setRangeEnd] = useState<string | null>(null);
 
     const start = startOfMonth(currentMonth);
     const end = endOfMonth(currentMonth);
@@ -43,14 +47,13 @@ const ConsistencyCalendar = () => {
     );
 
     const { data: summary } = useDailySummary(todayStr);
-    const { toggleLeave } = useProductivityMutations();
+    const { toggleLeave, bulkLeave } = useProductivityMutations();
     const { data: stats } = useChallengeStats();
 
     const days = eachDayOfInterval({ start, end });
     const historyMap = new Map();
     history?.forEach(h => historyMap.set(h.date, h));
 
-    // Determine color based on productivity logic
     const getColor = (percentage: number, isLeave: boolean, isFuture: boolean) => {
         if (isFuture) return "bg-muted/20 text-muted-foreground/20 border-transparent";
         if (isLeave) return "bg-orange-100 text-orange-600 border-orange-200";
@@ -64,51 +67,72 @@ const ConsistencyCalendar = () => {
     const padding = Array(startDay).fill(null);
 
     const handleLeaveToggle = (checked: boolean) => {
-        // Toggle for TODAY specifically via Switch
         if (checked) {
-            // Open dialog to fill details
             setSelectedDate(todayStr);
+            setRangeMode(false);
+            setRangeStart(null);
+            setRangeEnd(null);
             setIsMarkingLeave(true);
             setLeaveDialogOpen(true);
         } else {
-            // Just turn off
             toggleLeave(todayStr, false);
         }
     };
 
-    // Long Press Logic
-    const handleTouchStart = (dateStr: string, currentIsLeave: boolean, isFuture: boolean) => {
-        if (isFuture) return;
-
-        const timer = setTimeout(() => {
-            // Provide tactile feedback
-            if (navigator.vibrate) navigator.vibrate(50);
-
-            setSelectedDate(dateStr);
-            setIsMarkingLeave(!currentIsLeave);
-
-            if (!currentIsLeave) {
-                // Turning ON -> Show Dialog
+    // Click on a calendar day
+    const handleDayClick = (dateStr: string, currentIsLeave: boolean) => {
+        if (rangeMode) {
+            // Range selection logic
+            if (!rangeStart) {
+                setRangeStart(dateStr);
+            } else if (!rangeEnd) {
+                // Ensure start < end
+                if (dateStr < rangeStart) {
+                    setRangeEnd(rangeStart);
+                    setRangeStart(dateStr);
+                } else {
+                    setRangeEnd(dateStr);
+                }
+                // Open dialog to confirm
+                setIsMarkingLeave(true);
                 setLeaveDialogOpen(true);
             } else {
-                // Turning OFF -> Immediate action
+                // Reset and start new range
+                setRangeStart(dateStr);
+                setRangeEnd(null);
+            }
+        } else {
+            // Single day click
+            setSelectedDate(dateStr);
+            setIsMarkingLeave(!currentIsLeave);
+            if (!currentIsLeave) {
+                setLeaveDialogOpen(true);
+            } else {
                 toggleLeave(dateStr, false);
             }
-
-        }, 600);
-        setLongPressTimer(timer);
-    };
-
-    const handleTouchEnd = () => {
-        if (longPressTimer) {
-            clearTimeout(longPressTimer);
-            setLongPressTimer(null);
         }
     };
 
-    const confirmLeave = () => {
-        if (!selectedDate) return;
-        toggleLeave(selectedDate, true, leaveType, leaveReason);
+    const isInRange = (dateStr: string) => {
+        if (!rangeStart) return false;
+        if (rangeEnd) return dateStr >= rangeStart && dateStr <= rangeEnd;
+        return dateStr === rangeStart;
+    };
+
+    const confirmLeave = async () => {
+        if (rangeMode && rangeStart && rangeEnd) {
+            // Generate all dates in range
+            const allDates = eachDayOfInterval({
+                start: new Date(rangeStart + "T00:00:00"),
+                end: new Date(rangeEnd + "T00:00:00"),
+            }).map(d => format(d, "yyyy-MM-dd"));
+
+            await bulkLeave(allDates, true, leaveType, leaveReason);
+            setRangeStart(null);
+            setRangeEnd(null);
+        } else if (selectedDate) {
+            await toggleLeave(selectedDate, true, leaveType, leaveReason);
+        }
         setLeaveDialogOpen(false);
         setLeaveReason("");
         setLeaveType("Sick Leave");
@@ -142,6 +166,28 @@ const ConsistencyCalendar = () => {
                 </div>
             </div>
 
+            {/* Range mode toggle */}
+            <div className="flex items-center justify-between bg-muted/30 rounded-lg px-3 py-2">
+                <div className="flex flex-col">
+                    <span className="text-sm font-medium">Range Select</span>
+                    <span className="text-[10px] text-muted-foreground">
+                        {rangeMode
+                            ? rangeStart && !rangeEnd
+                                ? `Start: ${rangeStart} — tap end date`
+                                : "Tap start date, then end date"
+                            : "Tap a day to toggle leave"}
+                    </span>
+                </div>
+                <Switch
+                    checked={rangeMode}
+                    onCheckedChange={(v) => {
+                        setRangeMode(v);
+                        setRangeStart(null);
+                        setRangeEnd(null);
+                    }}
+                />
+            </div>
+
             {isLoading ? (
                 <div className="h-48 flex items-center justify-center">
                     <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -156,27 +202,28 @@ const ConsistencyCalendar = () => {
 
                     {days.map((day) => {
                         const dateStr = format(day, "yyyy-MM-dd");
-                        const isFuture = day > new Date();
+                        const isPast = isBefore(day, new Date()) && !isToday(day);
                         const record = historyMap.get(dateStr);
-
-                        // If today, use realtime summary if available, else record
                         const effectiveRecord = (isToday(day) && summary) ? summary : record;
 
                         const pct = effectiveRecord?.final_percentage || 0;
                         const isLeave = effectiveRecord?.is_leave || false;
                         const reason = effectiveRecord?.leave_reason;
+                        const inRange = isInRange(dateStr);
 
                         return (
                             <motion.div
                                 key={dateStr}
-                                whileHover={!isFuture ? { scale: 1.1 } : undefined}
-                                onPointerDown={() => handleTouchStart(dateStr, isLeave, isFuture)}
-                                onPointerUp={handleTouchEnd}
-                                onPointerLeave={handleTouchEnd}
+                                whileHover={{ scale: 1.1 }}
+                                onClick={() => handleDayClick(dateStr, isLeave)}
                                 className={cn(
-                                    "aspect-square rounded-lg flex items-center justify-center text-[10px] font-bold border cursor-default transition-colors relative group select-none",
-                                    getColor(pct, isLeave, isFuture),
-                                    isToday(day) && "ring-2 ring-primary ring-offset-2"
+                                    "aspect-square rounded-lg flex items-center justify-center text-[10px] font-bold border cursor-pointer transition-colors relative group select-none",
+                                    isPast && !isLeave ? getColor(pct, isLeave, false) : "",
+                                    !isPast && !isToday(day) && !isLeave ? "bg-muted/20 text-muted-foreground/50 border-transparent" : "",
+                                    isLeave && "bg-orange-100 text-orange-600 border-orange-200",
+                                    isToday(day) && !isLeave && "bg-primary/10 text-primary border-primary/30",
+                                    isToday(day) && "ring-2 ring-primary ring-offset-2",
+                                    inRange && "ring-2 ring-accent ring-offset-1 bg-accent/20"
                                 )}
                             >
                                 {format(day, "d")}
@@ -184,9 +231,9 @@ const ConsistencyCalendar = () => {
                                 {/* Tooltip */}
                                 <div className="absolute bottom-full mb-2 hidden group-hover:block bg-popover text-popover-foreground text-xs px-2 py-1 rounded shadow-md whitespace-nowrap z-10 pointer-events-none">
                                     <div className="font-bold">{format(day, "MMM d")}</div>
-                                    <div className="text-[10px]">{isLeave ? `On Leave (${effectiveRecord?.leave_type || 'Reason unspecified'})` : `${Math.round(pct)}% efficient`}</div>
+                                    <div className="text-[10px]">{isLeave ? `On Leave (${effectiveRecord?.leave_type || 'Unspecified'})` : `${Math.round(pct)}% efficient`}</div>
                                     {isLeave && reason && <div className="text-[9px] italic opacity-80 max-w-[150px] truncate">"{reason}"</div>}
-                                    <div className="text-[9px] opacity-70 font-normal mt-1 pt-1 border-t border-border/50">Long press to toggle leave</div>
+                                    <div className="text-[9px] opacity-70 font-normal mt-1 pt-1 border-t border-border/50">Click to toggle leave</div>
                                 </div>
                             </motion.div>
                         );
@@ -217,7 +264,10 @@ const ConsistencyCalendar = () => {
                     <DialogHeader>
                         <DialogTitle>Mark as Leave</DialogTitle>
                         <DialogDescription>
-                            Mark {selectedDate} as a non-working day. This ensures your consistency streak is protected.
+                            {rangeMode && rangeStart && rangeEnd
+                                ? `Mark ${rangeStart} to ${rangeEnd} as non-working days.`
+                                : `Mark ${selectedDate} as a non-working day.`
+                            } Your streak will be protected.
                         </DialogDescription>
                     </DialogHeader>
 
