@@ -2,11 +2,11 @@ name: Android CI (Build APK)
 
 on:
   push:
-    branches: [ "main", "steps-apk" ] # Add your current branch if different
+    branches: [ "main", "steps-apk" ]
     paths:
       - 'android-health-connect/**'
       - '.github/workflows/android.yml'
-  workflow_dispatch: # Allows manual trigger
+  workflow_dispatch:
 
 jobs:
   build:
@@ -24,13 +24,15 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
-    - name: Grant execute permission for gradlew
-      working-directory: android-health-connect
-      run: chmod +x gradlew
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: 8.5 # Force usage of a specific Gradle version if wrapper is broken
 
     - name: Build with Gradle
       working-directory: android-health-connect
-      run: ./gradlew assembleDebug
+      # Use `gradle` command instead of wrapper if wrapper script fails or is missing executable permission
+      run: gradle assembleDebug 
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
