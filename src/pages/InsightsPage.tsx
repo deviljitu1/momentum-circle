@@ -61,7 +61,7 @@ const InsightsPage = () => {
       </motion.div>
 
       {/* Weekly Summary Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { icon: TrendingUp, label: "Hours", value: `${totalWeeklyHours.toFixed(1)}h`, gradient: "gradient-primary" },
           { icon: Target, label: "Tasks", value: totalWeeklyTasks.toString(), gradient: "gradient-accent" },

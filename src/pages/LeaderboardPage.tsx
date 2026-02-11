@@ -51,7 +51,7 @@ const LeaderboardPage = () => {
 
       {/* Podium Section - Only Active Users */}
       {top3.length > 0 && (
-        <div className="flex items-end justify-center gap-4 py-4 h-48">
+        <div className="flex items-end justify-center gap-2 sm:gap-4 py-4 h-48">
           {podiumOrder.map((entry, i) => {
             const rank = entry === top3[0] ? 1 : entry === top3[1] ? 2 : 3;
             const isFirst = rank === 1;

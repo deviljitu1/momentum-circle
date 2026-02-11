@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
     format,
     startOfMonth,
@@ -9,7 +9,6 @@ import {
     subMonths,
     addMonths,
     getDay,
-    subDays
 } from "date-fns";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, Plane } from "lucide-react";
@@ -17,10 +16,11 @@ import { useProductivityHistory, useDailySummary, useProductivityMutations, useC
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 const ConsistencyCalendar = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
 
     const start = startOfMonth(currentMonth);
     const end = endOfMonth(currentMonth);
@@ -54,6 +54,27 @@ const ConsistencyCalendar = () => {
 
     const handleLeaveToggle = (checked: boolean) => {
         toggleLeave(todayStr, checked);
+    };
+
+    // Long Press Logic
+    const handleTouchStart = (dateStr: string, currentIsLeave: boolean, isFuture: boolean) => {
+        if (isFuture) return;
+
+        const timer = setTimeout(() => {
+            // Trigger toggle
+            toggleLeave(dateStr, !currentIsLeave);
+            // Provide tactile/visual feedback
+            if (navigator.vibrate) navigator.vibrate(50);
+            toast.info(currentIsLeave ? `Marked ${dateStr} as active` : `Marked ${dateStr} as leave`);
+        }, 800); // 800ms threshold
+        setLongPressTimer(timer);
+    };
+
+    const handleTouchEnd = () => {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            setLongPressTimer(null);
+        }
     };
 
     return (
@@ -110,9 +131,12 @@ const ConsistencyCalendar = () => {
                         return (
                             <motion.div
                                 key={dateStr}
-                                whileHover={{ scale: 1.1 }}
+                                whileHover={!isFuture ? { scale: 1.1 } : undefined}
+                                onPointerDown={() => handleTouchStart(dateStr, isLeave, isFuture)}
+                                onPointerUp={handleTouchEnd}
+                                onPointerLeave={handleTouchEnd}
                                 className={cn(
-                                    "aspect-square rounded-lg flex items-center justify-center text-[10px] font-bold border cursor-default transition-colors relative group",
+                                    "aspect-square rounded-lg flex items-center justify-center text-[10px] font-bold border cursor-default transition-colors relative group select-none",
                                     getColor(pct, isLeave, isFuture),
                                     isToday(day) && "ring-2 ring-primary ring-offset-2"
                                 )}
@@ -120,8 +144,9 @@ const ConsistencyCalendar = () => {
                                 {format(day, "d")}
 
                                 {/* Tooltip */}
-                                <div className="absolute bottom-full mb-2 hidden group-hover:block bg-popover text-popover-foreground text-xs px-2 py-1 rounded shadow-md whitespace-nowrap z-10">
+                                <div className="absolute bottom-full mb-2 hidden group-hover:block bg-popover text-popover-foreground text-xs px-2 py-1 rounded shadow-md whitespace-nowrap z-10 pointer-events-none">
                                     {format(day, "MMM d")}: {isLeave ? "On Leave" : `${Math.round(pct)}%`}
+                                    <div className="text-[9px] opacity-70 font-normal">Long press to toggle leave</div>
                                 </div>
                             </motion.div>
                         );

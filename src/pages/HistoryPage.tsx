@@ -123,7 +123,7 @@ const HistoryPage = () => {
             </div>
 
             {/* Legend */}
-            <div className="flex justify-center gap-4 text-xs text-muted-foreground">
+            <div className="flex justify-center gap-4 text-xs text-muted-foreground flex-wrap">
                 <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-muted border"></div> 0%</div>
                 <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-red-100 border border-red-200"></div> &lt;50%</div>
                 <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-yellow-100 border border-yellow-200"></div> 50-79%</div>
