@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface FocusTimerProps {
   onComplete?: (seconds: number) => void;
@@ -18,6 +25,18 @@ const FocusTimer = ({ onComplete, compact = false }: FocusTimerProps) => {
   const [seconds, setSeconds] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualMins, setManualMins] = useState("");
+
+  const handleManualSubmit = () => {
+    const min = parseInt(manualMins);
+    if (!isNaN(min) && min > 0) {
+      onComplete?.(min * 60);
+      setManualOpen(false);
+      setManualMins("");
+    }
+  };
 
   // Update seconds when targetMins changes (only if not running/paused mid-way?)
   // Actually, usually changing settings resets the timer.
@@ -169,6 +188,33 @@ const FocusTimer = ({ onComplete, compact = false }: FocusTimerProps) => {
           <RotateCcw className="w-5 h-5" />
         </Button>
       </div>
+
+      <Dialog open={manualOpen} onOpenChange={setManualOpen}>
+        <DialogTrigger asChild>
+          <Button variant="link" size="sm" className="text-muted-foreground">
+            Log manual session
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log Focus Session Manually</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label>Duration (minutes)</Label>
+              <Input
+                type="number"
+                value={manualMins}
+                onChange={(e) => setManualMins(e.target.value)}
+                placeholder="e.g. 60"
+              />
+            </div>
+            <Button onClick={handleManualSubmit} className="w-full">
+              Log Session
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };

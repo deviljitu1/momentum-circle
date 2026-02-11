@@ -465,5 +465,22 @@ export const useProductivityMutations = () => {
         queryClient.invalidateQueries({ queryKey: [KEYS.history] });
     };
 
-    return { addTask, updateLog, toggleLeave: handleToggleLeave, bulkLeave: handleBulkLeave, deleteTask, followUser, unfollowUser };
+    const editTask = useMutation({
+        mutationFn: async (payload: { id: string; title: string; task_type: TaskType; target_value?: number }) => {
+            const { id, ...updates } = payload;
+            const { error } = await supabase
+                .from("tasks")
+                .update(updates)
+                .eq("id", id);
+
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [KEYS.tasks] });
+            toast.success("Task updated!");
+        },
+        onError: (error) => toast.error(`Failed to update task: ${error.message}`),
+    });
+
+    return { addTask, editTask, updateLog, toggleLeave: handleToggleLeave, bulkLeave: handleBulkLeave, deleteTask, followUser, unfollowUser };
 };

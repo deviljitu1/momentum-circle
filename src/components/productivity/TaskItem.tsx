@@ -1,12 +1,20 @@
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Check, Clock, Hash, Trash2 } from "lucide-react";
+import { Check, Clock, Hash, Trash2, Edit2, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { ProductivityTask, TaskLog } from "@/types/productivity";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ProductivityTask, TaskLog, TaskType } from "@/types/productivity";
 import { useProductivityMutations } from "@/hooks/useProductivity";
 import { cn } from "@/lib/utils";
 
@@ -17,10 +25,16 @@ interface TaskItemProps {
 }
 
 export const TaskItem = ({ task, log, date }: TaskItemProps) => {
-    const { updateLog, deleteTask } = useProductivityMutations();
+    const { updateLog, deleteTask, editTask } = useProductivityMutations();
     const [val, setVal] = useState<string>(log?.actual_value?.toString() || "");
     const [completed, setCompleted] = useState<boolean>(log?.completed || false);
     const [isSyncing, setIsSyncing] = useState(false);
+
+    // Edit State
+    const [editOpen, setEditOpen] = useState(false);
+    const [editTitle, setEditTitle] = useState(task.title);
+    const [editType, setEditType] = useState<TaskType>(task.task_type);
+    const [editTarget, setEditTarget] = useState(task.target_value?.toString() || "");
 
     useEffect(() => {
         setVal(log?.actual_value?.toString() || "");
@@ -51,6 +65,18 @@ export const TaskItem = ({ task, log, date }: TaskItemProps) => {
             { taskId: task.id, date, completed: checked },
             { onSettled: () => setIsSyncing(false) }
         );
+    };
+
+    const handleEdit = async () => {
+        if (!editTitle.trim()) return;
+
+        await editTask.mutateAsync({
+            id: task.id,
+            title: editTitle,
+            task_type: editType,
+            target_value: editType === 'C' ? undefined : parseFloat(editTarget) || 1,
+        });
+        setEditOpen(false);
     };
 
     // Calculate progress for display
@@ -91,6 +117,61 @@ export const TaskItem = ({ task, log, date }: TaskItemProps) => {
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-lg font-bold text-primary">{Math.round(progress)}%</span>
+
+                    <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                        <DialogTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            >
+                                <Edit2 className="w-4 h-4" />
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Edit Task</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 pt-4">
+                                <div>
+                                    <Label>Title</Label>
+                                    <Input
+                                        value={editTitle}
+                                        onChange={(e) => setEditTitle(e.target.value)}
+                                        placeholder="Task Title"
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Type</Label>
+                                    <Select value={editType} onValueChange={(v: TaskType) => setEditType(v)}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="A">Duration (Time)</SelectItem>
+                                            <SelectItem value="B">Quantity (Units)</SelectItem>
+                                            <SelectItem value="C">Binary (Yes/No)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {editType !== 'C' && (
+                                    <div>
+                                        <Label>Target {editType === 'A' ? '(Hours)' : '(Units)'}</Label>
+                                        <Input
+                                            type="number"
+                                            value={editTarget}
+                                            onChange={(e) => setEditTarget(e.target.value)}
+                                            placeholder="e.g. 1.5"
+                                        />
+                                    </div>
+                                )}
+                                <Button onClick={handleEdit} disabled={editTask.isPending} className="w-full">
+                                    {editTask.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Changes"}
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
                     <Button
                         variant="ghost"
                         size="icon"

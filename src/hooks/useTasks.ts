@@ -29,7 +29,7 @@ export const useTasks = () => {
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
-      
+
       if (error) throw error;
       return data as Task[];
     },
@@ -44,7 +44,7 @@ export const useTasks = () => {
         .insert({ user_id: user.id, title, category, estimated_mins })
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -61,12 +61,12 @@ export const useTasks = () => {
     mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
       const { error } = await supabase
         .from("tasks")
-        .update({ 
-          completed: !completed, 
-          completed_at: !completed ? new Date().toISOString() : null 
+        .update({
+          completed: !completed,
+          completed_at: !completed ? new Date().toISOString() : null
         })
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -84,5 +84,22 @@ export const useTasks = () => {
     },
   });
 
-  return { tasks, isLoading, addTask, toggleTask, deleteTask };
+  const updateTask = useMutation({
+    mutationFn: async ({ id, title, category, estimated_mins }: { id: string; title: string; category: string; estimated_mins: number }) => {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ title, category, estimated_mins })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast({ title: "Task updated! ✨" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  return { tasks, isLoading, addTask, toggleTask, deleteTask, updateTask };
 };
