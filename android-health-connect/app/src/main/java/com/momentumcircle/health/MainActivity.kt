@@ -2,64 +2,46 @@ package com.momentumcircle.health
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.lifecycleScope
 import androidx.health.connect.client.PermissionController
 import kotlinx.coroutines.launch
+import android.widget.Toast
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var healthConnectManager: HealthConnectManager
     private lateinit var stepRepository: StepRepository
+    private var webViewRef: WebView? = null
 
     // Permission launcher
     private val requestPermissionActivityContract = PermissionController.createRequestPermissionResultContract()
     
+    // REPLACE THIS WITH YOUR NETLIFY URL
+    private val webAppUrl = "https://letsget-it-done.netlify.app/" 
+
     private val requestPermissions = registerForActivityResult(requestPermissionActivityContract) { granted ->
         if (granted.containsAll(healthConnectManager.permissions)) {
             fetchSteps()
+        } else {
+            Toast.makeText(this, "Permissions not granted", Toast.LENGTH_SHORT).show()
         }
     }
-
-    // State
-    private var stepsState by mutableStateOf<Long>(0)
-    private var isConnected by mutableStateOf(false)
-    private var availability by mutableStateOf(HealthConnectAvailability.NOT_SUPPORTED)
-    
-    // REPLACE THIS WITH YOUR NETLIFY URL WHEN READY
-    // For Emulator localhost: http://10.0.2.2:5173
-    // For Physical Device: Use your computer's IP (e.g., http://192.168.1.X:5173) OR your Netlify URL
-    private val webAppUrl = "http://10.0.2.2:5173" 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         healthConnectManager = HealthConnectManager(this)
         stepRepository = StepRepository(healthConnectManager.getClient())
-        
-        availability = healthConnectManager.checkAvailability()
-
-        if (availability == HealthConnectAvailability.INSTALLED) {
-            lifecycleScope.launch {
-                isConnected = healthConnectManager.hasPermissions()
-                if (isConnected) {
-                    fetchSteps()
-                }
-            }
-        }
 
         setContent {
             MaterialTheme {
@@ -67,26 +49,19 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        // 1. Web View (Background)
-                        WebViewContainer(url = webAppUrl)
-
-                        // 2. Health Connect Overlay (Floating Button)
-                        HealthConnectOverlay(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(16.dp),
-                            isConnected = isConnected,
-                            steps = stepsState,
-                            onConnectClick = { handleConnect() }
-                        )
-                    }
+                    WebViewContainer(
+                        url = webAppUrl, 
+                        jsInterface = WebAppInterface(),
+                        onWebViewCreated = { webViewRef = it }
+                    )
                 }
             }
         }
     }
 
     private fun handleConnect() {
+        val availability = healthConnectManager.checkAvailability()
+
         if (availability == HealthConnectAvailability.NOT_INSTALLED) {
             healthConnectManager.installHealthConnect()
             return
@@ -94,7 +69,12 @@ class MainActivity : ComponentActivity() {
 
         if (availability == HealthConnectAvailability.INSTALLED) {
             lifecycleScope.launch {
-                requestPermissions.launch(healthConnectManager.permissions)
+                val hasPermissions = healthConnectManager.hasPermissions()
+                if (hasPermissions) {
+                    fetchSteps()
+                } else {
+                    requestPermissions.launch(healthConnectManager.permissions)
+                }
             }
         }
     }
@@ -102,25 +82,38 @@ class MainActivity : ComponentActivity() {
     private fun fetchSteps() {
         lifecycleScope.launch {
             val steps = stepRepository.getTodaySteps()
-            stepsState = steps
-            isConnected = true
-            // TODO: In a real app, you would send 'steps' to your Supabase DB here via an API call
-            // or inject it into the WebView via JavascriptInterface.
-            // For now, we just show it in the overlay.
+            
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "Synced: $steps steps", Toast.LENGTH_SHORT).show()
+                // Call Web App Function
+                webViewRef?.evaluateJavascript("javascript:if(window.syncDailySteps) window.syncDailySteps($steps);", null)
+            }
+        }
+    }
+
+    // JavaScript Interface
+    inner class WebAppInterface {
+        @JavascriptInterface
+        fun connect() {
+            runOnUiThread {
+                handleConnect()
+            }
         }
     }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun WebViewContainer(url: String) {
+fun WebViewContainer(url: String, jsInterface: Any, onWebViewCreated: (WebView) -> Unit) {
     AndroidView(
         factory = { context ->
             WebView(context).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 webViewClient = WebViewClient()
+                addJavascriptInterface(jsInterface, "Android") // window.Android
                 loadUrl(url)
+                onWebViewCreated(this)
             }
         },
         update = { webView ->
@@ -128,31 +121,4 @@ fun WebViewContainer(url: String) {
         },
         modifier = Modifier.fillMaxSize()
     )
-}
-
-@Composable
-fun HealthConnectOverlay(
-    modifier: Modifier = Modifier,
-    isConnected: Boolean,
-    steps: Long,
-    onConnectClick: () -> Unit
-) {
-    FloatingActionButton(
-        onClick = onConnectClick,
-        modifier = modifier,
-        containerColor = if (isConnected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Default.Favorite, contentDescription = "Health")
-            Spacer(modifier = Modifier.width(8.dp))
-            if (isConnected) {
-                Text(text = "$steps steps")
-            } else {
-                Text(text = "Sync Health")
-            }
-        }
-    }
 }

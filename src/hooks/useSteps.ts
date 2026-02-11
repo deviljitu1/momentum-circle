@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -120,5 +120,31 @@ export const useSteps = () => {
     refetchInterval: 60000,
   });
 
-  return { todaySteps, weeklySteps, leaderboard, isLoading, isError, refetch };
+  // Mutation to log steps (used by Android Bridge)
+  const logSteps = useMutation({
+    mutationFn: async (steps: number) => {
+      if (!user) throw new Error("Not authenticated");
+
+      // Check if entry exists for today
+      if (todaySteps) {
+        const { error } = await supabase
+          .from("daily_steps")
+          .update({ steps, updated_at: new Date().toISOString() })
+          .eq("id", todaySteps.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("daily_steps")
+          .insert({ user_id: user.id, date: today, steps });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      refetch(); // Reload today's steps
+      // Also invalidate weekly
+      // queryClient.invalidateQueries({ queryKey: ["weekly_steps"] });
+    }
+  });
+
+  return { todaySteps, weeklySteps, leaderboard, isLoading, isError, refetch, logSteps };
 };
