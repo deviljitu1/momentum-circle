@@ -121,32 +121,79 @@ export const useChallengeStats = () => {
 };
 
 // Fetch Leaderboard
-export const useProductivityLeaderboard = (date: string) => {
+export const useProductivityLeaderboard = (period: "daily" | "weekly" = "daily") => {
     return useQuery({
-        queryKey: [KEYS.leaderboard, date],
+        queryKey: [KEYS.leaderboard, period],
         queryFn: async () => {
-            // Join summaries with profiles
-            const { data, error } = await supabase
+            const today = new Date();
+            const dateStr = format(today, "yyyy-MM-dd");
+            let startDate = dateStr;
+
+            if (period === "weekly") {
+                const start = new Date();
+                start.setDate(today.getDate() - 6); // Last 7 days
+                startDate = format(start, "yyyy-MM-dd");
+            }
+
+            // 1. Get all profiles (to show everyone)
+            const { data: profiles, error: profilesError } = await supabase
+                .from("profiles")
+                .select("user_id, display_name, avatar_url");
+
+            if (profilesError) throw profilesError;
+
+            // 2. Get summaries for the period
+            const { data: summaries, error: summariesError } = await supabase
                 .from("daily_summaries")
-                .select(`
-          user_id,
-          final_percentage,
-          is_leave,
-          profiles:user_id ( display_name, avatar_url )
-        `)
-                .eq("date", date)
-                .eq("is_leave", false)
-                .order("final_percentage", { ascending: false });
+                .select("*")
+                .gte("date", startDate)
+                .lte("date", dateStr);
 
-            if (error) throw error;
+            if (summariesError) throw summariesError;
 
-            return data.map((entry: any) => ({
-                user_id: entry.user_id,
-                display_name: entry.profiles?.display_name || "Unknown",
-                avatar_url: entry.profiles?.avatar_url,
-                final_percentage: entry.final_percentage,
-                is_leave: entry.is_leave,
-            }));
+            // 3. Merge and Calculate
+            const leaderboard = profiles.map(profile => {
+                const userSummaries = summaries?.filter(s => s.user_id === profile.user_id) || [];
+
+                let score = 0;
+                let isLeave = false;
+                let daysCounted = 0;
+
+                if (period === "daily") {
+                    const todaySummary = userSummaries.find(s => s.date === dateStr);
+                    score = todaySummary?.final_percentage || 0;
+                    isLeave = todaySummary?.is_leave || false;
+                } else {
+                    // Weekly: Average of final_percentage for non-leave days
+                    // If all days are leave, score 0? Or maybe hide?
+                    // User said: "if somone is on leave... it should not show as that peosion has not worked"
+                    // i.e. Don't penalize.
+
+                    const activeDays = userSummaries.filter(s => !s.is_leave);
+                    if (activeDays.length > 0) {
+                        const totalPct = activeDays.reduce((sum, s) => sum + (s.final_percentage || 0), 0);
+                        score = totalPct / activeDays.length;
+                    } else {
+                        score = 0; // Or handle as special case
+                    }
+
+                    // Allow leave flag if today is leave? Or if strictly all week leave?
+                    // Let's set leave flag if Today is leave, for display purposes.
+                    const todaySummary = userSummaries.find(s => s.date === dateStr);
+                    isLeave = todaySummary?.is_leave || false;
+                }
+
+                return {
+                    user_id: profile.user_id,
+                    display_name: profile.display_name || "Unknown",
+                    avatar_url: profile.avatar_url,
+                    final_percentage: score,
+                    is_leave: isLeave,
+                };
+            });
+
+            // Sort by score desc
+            return leaderboard.sort((a, b) => b.final_percentage - a.final_percentage);
         },
     });
 };
