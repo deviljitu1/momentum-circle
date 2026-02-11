@@ -5,6 +5,12 @@
     <!-- Health Connect Permissions -->
     <uses-permission android:name="android.permission.health.READ_STEPS" />
     <uses-permission android:name="android.permission.health.WRITE_STEPS" />
+    
+    <!-- Network Permissions for Web App -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Internet Permission for WebView -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Check for Health Connect availability -->
     <queries>
@@ -23,6 +29,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MomentumHealth"
+        android:usesCleartextTraffic="true"
         tools:targetApi="31">
         
         <!-- Main Activity for Health Connect Integration -->
