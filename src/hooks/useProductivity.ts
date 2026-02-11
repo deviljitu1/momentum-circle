@@ -245,7 +245,7 @@ export const useProductivityMutations = () => {
         onError: (error) => toast.error(`Failed to update progress: ${error.message}`),
     });
 
-    const handleToggleLeave = async (date: string, isLeave: boolean) => {
+    const handleToggleLeave = async (date: string, isLeave: boolean, type?: string, reason?: string) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
@@ -258,10 +258,16 @@ export const useProductivityMutations = () => {
             .maybeSingle();
 
         let error;
+        const payload = {
+            is_leave: isLeave,
+            leave_type: isLeave ? type || "Other" : null,
+            leave_reason: isLeave ? reason || null : null,
+        };
+
         if (existing) {
             const res = await supabase
                 .from("daily_summaries")
-                .update({ is_leave: isLeave })
+                .update(payload)
                 .eq("id", existing.id);
             error = res.error;
         } else {
@@ -270,10 +276,10 @@ export const useProductivityMutations = () => {
                 .insert({
                     user_id: user.id,
                     date,
-                    is_leave: isLeave,
                     earned_points: 0,
                     possible_points: 0,
-                    final_percentage: 0
+                    final_percentage: 0,
+                    ...payload
                 });
             error = res.error;
         }

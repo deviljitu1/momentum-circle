@@ -9,7 +9,7 @@ import AISuggestionsCard from "@/components/AISuggestionsCard";
 import { useTasks } from "@/hooks/useTasks";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
-import { useLeaderboard } from "@/hooks/useLeaderboard";
+import { useProductivityLeaderboard } from "@/hooks/useProductivity";
 import { useCategories } from "@/hooks/useCategories";
 import { useTour } from "@/contexts/TourContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +23,7 @@ const Dashboard = () => {
   const { user, profile } = useAuth();
   const { tasks, isLoading, toggleTask, addTask } = useTasks();
   const { createActivity } = useActivityFeed();
-  const { leaderboard } = useLeaderboard(); // Fetch leaderboard
+  const { data: leaderboard = [], isLoading: leaderboardLoading } = useProductivityLeaderboard("daily");
   const { categories: categoryData } = useCategories();
   const { startTour } = useTour();
 
@@ -315,7 +315,11 @@ const Dashboard = () => {
             </div>
 
             <div className="space-y-3">
-              {leaderboard.length === 0 ? (
+              {leaderboardLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : leaderboard.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Join the competition!</p>
               ) : (
                 leaderboard.slice(0, 3).map((entry, index) => {
@@ -329,7 +333,7 @@ const Dashboard = () => {
                         {entry.avatar_url ? (
                           <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          entry.display_name[0]
+                          entry.display_name?.[0] || "?"
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -337,7 +341,7 @@ const Dashboard = () => {
                           <span className={`text-sm font-semibold truncate ${isYou ? "text-primary" : ""}`}>
                             {isYou ? "You" : entry.display_name}
                           </span>
-                          <span className="text-xs font-bold text-muted-foreground">{entry.total_points} pts</span>
+                          <span className="text-xs font-bold text-muted-foreground">{Math.round(entry.final_percentage)}%</span>
                         </div>
                       </div>
                     </div>

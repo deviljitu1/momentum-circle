@@ -27,6 +27,8 @@ export interface DailySummary {
     possible_points: number;
     final_percentage: number;
     is_leave: boolean;
+    leave_type?: string;
+    leave_reason?: string;
 }
 
 export interface ChallengeStats {

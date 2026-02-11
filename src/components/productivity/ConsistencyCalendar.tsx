@@ -11,16 +11,27 @@ import {
     getDay,
 } from "date-fns";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, Plane } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, Plane, MoreHorizontal } from "lucide-react";
 import { useProductivityHistory, useDailySummary, useProductivityMutations, useChallengeStats } from "@/hooks/useProductivity";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const ConsistencyCalendar = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+
+    // Leave Dialog State
+    const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+    const [selectedDate, setSelectedDate] = useState<string | null>(null);
+    const [leaveType, setLeaveType] = useState("Sick Leave");
+    const [leaveReason, setLeaveReason] = useState("");
+    const [isMarkingLeave, setIsMarkingLeave] = useState(true); // true = turning leave ON, false = turning OFF
 
     const start = startOfMonth(currentMonth);
     const end = endOfMonth(currentMonth);
@@ -53,7 +64,16 @@ const ConsistencyCalendar = () => {
     const padding = Array(startDay).fill(null);
 
     const handleLeaveToggle = (checked: boolean) => {
-        toggleLeave(todayStr, checked);
+        // Toggle for TODAY specifically via Switch
+        if (checked) {
+            // Open dialog to fill details
+            setSelectedDate(todayStr);
+            setIsMarkingLeave(true);
+            setLeaveDialogOpen(true);
+        } else {
+            // Just turn off
+            toggleLeave(todayStr, false);
+        }
     };
 
     // Long Press Logic
@@ -61,12 +81,21 @@ const ConsistencyCalendar = () => {
         if (isFuture) return;
 
         const timer = setTimeout(() => {
-            // Trigger toggle
-            toggleLeave(dateStr, !currentIsLeave);
-            // Provide tactile/visual feedback
+            // Provide tactile feedback
             if (navigator.vibrate) navigator.vibrate(50);
-            toast.info(currentIsLeave ? `Marked ${dateStr} as active` : `Marked ${dateStr} as leave`);
-        }, 800); // 800ms threshold
+
+            setSelectedDate(dateStr);
+            setIsMarkingLeave(!currentIsLeave);
+
+            if (!currentIsLeave) {
+                // Turning ON -> Show Dialog
+                setLeaveDialogOpen(true);
+            } else {
+                // Turning OFF -> Immediate action
+                toggleLeave(dateStr, false);
+            }
+
+        }, 600);
         setLongPressTimer(timer);
     };
 
@@ -75,6 +104,14 @@ const ConsistencyCalendar = () => {
             clearTimeout(longPressTimer);
             setLongPressTimer(null);
         }
+    };
+
+    const confirmLeave = () => {
+        if (!selectedDate) return;
+        toggleLeave(selectedDate, true, leaveType, leaveReason);
+        setLeaveDialogOpen(false);
+        setLeaveReason("");
+        setLeaveType("Sick Leave");
     };
 
     return (
@@ -127,6 +164,7 @@ const ConsistencyCalendar = () => {
 
                         const pct = effectiveRecord?.final_percentage || 0;
                         const isLeave = effectiveRecord?.is_leave || false;
+                        const reason = effectiveRecord?.leave_reason;
 
                         return (
                             <motion.div
@@ -145,8 +183,10 @@ const ConsistencyCalendar = () => {
 
                                 {/* Tooltip */}
                                 <div className="absolute bottom-full mb-2 hidden group-hover:block bg-popover text-popover-foreground text-xs px-2 py-1 rounded shadow-md whitespace-nowrap z-10 pointer-events-none">
-                                    {format(day, "MMM d")}: {isLeave ? "On Leave" : `${Math.round(pct)}%`}
-                                    <div className="text-[9px] opacity-70 font-normal">Long press to toggle leave</div>
+                                    <div className="font-bold">{format(day, "MMM d")}</div>
+                                    <div className="text-[10px]">{isLeave ? `On Leave (${effectiveRecord?.leave_type || 'Reason unspecified'})` : `${Math.round(pct)}% efficient`}</div>
+                                    {isLeave && reason && <div className="text-[9px] italic opacity-80 max-w-[150px] truncate">"{reason}"</div>}
+                                    <div className="text-[9px] opacity-70 font-normal mt-1 pt-1 border-t border-border/50">Long press to toggle leave</div>
                                 </div>
                             </motion.div>
                         );
@@ -160,7 +200,9 @@ const ConsistencyCalendar = () => {
                     <Plane className={cn("w-4 h-4", summary?.is_leave ? "text-orange-500" : "text-muted-foreground")} />
                     <div className="flex flex-col">
                         <span className="text-sm font-medium">Emergency Leave</span>
-                        <span className="text-[10px] text-muted-foreground">Don't break your streak on sick days</span>
+                        <span className="text-[10px] text-muted-foreground">
+                            {summary?.is_leave ? `Active: ${summary.leave_type || "Day Off"}` : "Don't break your streak on sick days"}
+                        </span>
                     </div>
                 </div>
                 <Switch
@@ -168,6 +210,50 @@ const ConsistencyCalendar = () => {
                     onCheckedChange={handleLeaveToggle}
                 />
             </div>
+
+            {/* Leave Details Dialog */}
+            <Dialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Mark as Leave</DialogTitle>
+                        <DialogDescription>
+                            Mark {selectedDate} as a non-working day. This ensures your consistency streak is protected.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Leave Type</Label>
+                            <Select value={leaveType} onValueChange={setLeaveType}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Sick Leave">Sick Leave 🤒</SelectItem>
+                                    <SelectItem value="Vacation">Vacation ✈️</SelectItem>
+                                    <SelectItem value="Personal Emergency">Personal Emergency 🚑</SelectItem>
+                                    <SelectItem value="Rest Day">Rest Day 🛌</SelectItem>
+                                    <SelectItem value="Other">Other 📝</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Reason (Optional)</Label>
+                            <Input
+                                placeholder="E.g. Not feeling well..."
+                                value={leaveReason}
+                                onChange={(e) => setLeaveReason(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setLeaveDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={confirmLeave}>Confirm Leave</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
