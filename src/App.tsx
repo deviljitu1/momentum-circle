@@ -13,6 +13,7 @@ import CirclesPage from "./pages/CirclesPage";
 import AuthPage from "./pages/AuthPage";
 import InsightsPage from "./pages/InsightsPage";
 import AdminPage from "./pages/AdminPage";
+import HistoryPage from "./pages/HistoryPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -105,6 +106,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <AdminPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute>
+              <HistoryPage />
             </ProtectedRoute>
           }
         />

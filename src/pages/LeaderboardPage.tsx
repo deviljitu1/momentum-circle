@@ -1,16 +1,18 @@
+
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Crown, Loader2 } from "lucide-react";
-import { LeaderboardItem } from "@/components/LeaderboardItem";
-import { useLeaderboard } from "@/hooks/useLeaderboard";
+import { Loader2, Crown, Trophy, AlertTriangle } from "lucide-react";
+import { useProductivityLeaderboard } from "@/hooks/useProductivity";
 import { useAuth } from "@/contexts/AuthContext";
+import { format } from "date-fns";
 
 const LeaderboardPage = () => {
-  const [period, setPeriod] = useState<"daily" | "weekly">("daily");
-  const { leaderboard, isLoading } = useLeaderboard(undefined, period);
+  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const { data: leaderboard, isLoading } = useProductivityLeaderboard(date);
   const { user } = useAuth();
 
-  const maxPoints = leaderboard[0]?.total_points || 1;
+  const top3 = leaderboard?.slice(0, 3) || [];
+  const podiumOrder = top3.length === 3 ? [top3[1], top3[0], top3[2]] : top3;
 
   if (isLoading) {
     return (
@@ -20,110 +22,117 @@ const LeaderboardPage = () => {
     );
   }
 
-  const top3 = leaderboard.slice(0, 3);
-  const podiumOrder = top3.length === 3 ? [top3[1], top3[0], top3[2]] : top3;
-
   return (
-    <div className="pb-24 px-4 pt-6 max-w-4xl mx-auto space-y-5">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <h1 className="text-2xl font-extrabold">Leaderboard</h1>
-        <p className="text-sm text-muted-foreground">Compete with your friends</p>
+    <div className="pb-24 px-4 pt-6 max-w-4xl mx-auto space-y-6">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
+        <h1 className="text-2xl font-extrabold flex items-center gap-2">
+          <Trophy className="w-6 h-6 text-yellow-500" /> Leaderboard
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Rankings for {date === format(new Date(), "yyyy-MM-dd") ? "Today" : date}
+        </p>
       </motion.div>
 
-      {/* Period Toggle */}
-      <div className="flex bg-muted rounded-xl p-1">
-        {(["daily", "weekly"] as const).map((p) => (
-          <button
-            key={p}
-            onClick={() => setPeriod(p)}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${period === p ? "bg-card shadow-card text-foreground" : "text-muted-foreground"
-              }`}
-          >
-            {p}
-          </button>
-        ))}
-      </div>
+      {/* Podium */}
+      {top3.length > 0 && (
+        <div className="flex items-end justify-center gap-4 py-8">
+          {podiumOrder.map((entry, i) => {
+            if (!entry) return null;
+            // Re-map index for height: Center (0 in podiumOrder?) No.
+            // podiumOrder is [2nd, 1st, 3rd] usually.
+            // But my logic: top3[1] (2nd), top3[0] (1st), top3[2] (3rd).
+            const isFirst = entry === top3[0];
+            const isSecond = entry === top3[1];
+            const isThird = entry === top3[2];
 
-      {leaderboard.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <p className="text-4xl mb-2">🏆</p>
-          <p className="font-medium">No rankings yet</p>
-          <p className="text-sm">Complete tasks and focus sessions to earn points!</p>
-        </div>
-      ) : (
-        <>
-          {/* Top 3 Podium */}
-          {top3.length >= 3 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="flex items-end justify-center gap-3 pt-4 pb-2"
-            >
-              {podiumOrder.map((entry, i) => {
-                if (!entry) return null;
-                const heights = [80, 100, 64];
-                const actualRank = i === 0 ? 2 : i === 1 ? 1 : 3;
-                const isYou = entry.user_id === user?.id;
-                return (
-                  <motion.div
-                    key={entry.user_id}
-                    initial={{ y: 30, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 + i * 0.1 }}
-                    className="flex flex-col items-center"
-                  >
-                    <div className={`relative ${i === 1 ? "w-[72px] h-[72px]" : "w-14 h-14"} rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-bold text-lg mb-2`}>
-                      {entry.avatar_url ? (
-                        <img src={entry.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
-                      ) : (
-                        entry.display_name[0]
-                      )}
-                      {actualRank === 1 && (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                          <Crown className="w-5 h-5 text-warning fill-warning" />
-                        </div>
-                      )}
-                    </div>
-                    <span className={`text-xs font-semibold truncate max-w-[70px] text-center ${isYou ? "text-primary" : ""}`}>
-                      {isYou ? "You" : entry.display_name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {entry.percentage !== undefined ? `${entry.percentage}%` : `${entry.total_points} pts`}
-                    </span>
-                    <div
-                      className={`w-16 mt-2 rounded-t-lg ${actualRank === 1 ? "gradient-hero" : actualRank === 2 ? "bg-primary/30" : "bg-accent/30"}`}
-                      style={{ height: heights[i] }}
-                    />
-                  </motion.div>
-                );
-              })}
-            </motion.div>
-          )}
+            const height = isFirst ? "h-32" : isSecond ? "h-24" : "h-20";
+            const color = isFirst ? "bg-yellow-100 border-yellow-300 text-yellow-700" :
+              isSecond ? "bg-gray-100 border-gray-300 text-gray-700" :
+                "bg-orange-50 border-orange-200 text-orange-700";
 
-          {/* Full Ranking */}
-          <div className="space-y-2">
-            {leaderboard.map((entry, i) => (
-              <LeaderboardItem
+            return (
+              <motion.div
                 key={entry.user_id}
-                user={{
-                  id: entry.user_id,
-                  name: entry.user_id === user?.id ? "You" : entry.display_name,
-                  avatar: entry.avatar_url || "",
-                  points: entry.total_points,
-                  hours: entry.total_hours,
-                  streak: entry.streak_days,
-                  percentage: entry.percentage,
-                  target: entry.target_hours,
-                }}
-                rank={i + 1}
-                maxPoints={maxPoints}
-                prevUserPoints={i > 0 ? leaderboard[i - 1].total_points : undefined}
-              />
+                initial={{ scale: 0, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="flex flex-col items-center"
+              >
+                <div className="mb-2 relative">
+                  <div className={`w-12 h-12 rounded-full overflow-hidden border-2 flex items-center justify-center bg-background ${isFirst ? 'border-yellow-400' : 'border-border'}`}>
+                    {entry.avatar_url ? (
+                      <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-bold text-lg">{entry.display_name[0]}</span>
+                    )}
+                  </div>
+                  {isFirst && <Crown className="w-5 h-5 text-yellow-500 absolute -top-3 left-1/2 -translate-x-1/2" />}
+                </div>
+                <div className="text-xs font-bold mb-1 max-w-[80px] truncate">{entry.display_name}</div>
+                <div className={`w-16 ${height} ${color} rounded-t-xl border-t border-x flex items-end justify-center pb-2`}>
+                  <span className="font-bold">{Math.round(entry.final_percentage)}%</span>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* List */}
+      <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
+        {leaderboard && leaderboard.length > 0 ? (
+          <div className="divide-y">
+            {leaderboard.map((entry, i) => (
+              <motion.div
+                key={entry.user_id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className={`p-4 flex items-center gap-4 ${entry.user_id === user?.id ? "bg-primary/5" : ""}`}
+              >
+                <div className="w-8 font-bold text-muted-foreground text-center">#{i + 1}</div>
+
+                <div className="flex-1 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                    {entry.avatar_url ? (
+                      <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-semibold">{entry.display_name?.[0]}</span>
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-semibold">{entry.user_id === user?.id ? "You" : entry.display_name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {entry.is_leave ? "On Leave" : ""}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-32 flex flex-col gap-1">
+                  <div className="flex justify-between text-xs font-medium">
+                    <span>Progress</span>
+                    <span>{Math.round(entry.final_percentage)}%</span>
+                  </div>
+                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-1000"
+                      style={{ width: `${entry.final_percentage}%` }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
             ))}
           </div>
-        </>
-      )}
+        ) : (
+          <div className="p-12 text-center text-muted-foreground">
+            <p>No active participants today.</p>
+          </div>
+        )}
+      </div>
+
+      <div className="text-center text-xs text-muted-foreground pt-4">
+        <p>Users on leave are hidden from the ranking.</p>
+      </div>
     </div>
   );
 };
