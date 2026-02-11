@@ -413,6 +413,57 @@ export const useProductivityMutations = () => {
         onError: (e) => toast.error("Failed to unfollow user")
     });
 
+    const deleteTask = useMutation({
+        mutationFn: async (taskId: string) => {
+            const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [KEYS.tasks] });
+            queryClient.invalidateQueries({ queryKey: [KEYS.summary] });
+            toast.success("Task deleted");
+        },
+        onError: (error) => toast.error(`Failed to delete task: ${error.message}`),
+    });
 
-    return { addTask, updateLog, toggleLeave: handleToggleLeave, followUser, unfollowUser };
+    const handleBulkLeave = async (dates: string[], isLeave: boolean, type?: string, reason?: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        for (const date of dates) {
+            const { data: existing } = await supabase
+                .from("daily_summaries")
+                .select("id")
+                .eq("user_id", user.id)
+                .eq("date", date)
+                .maybeSingle();
+
+            const payload = {
+                is_leave: isLeave,
+                leave_type: isLeave ? type || "Other" : null,
+                leave_reason: isLeave ? reason || null : null,
+            };
+
+            if (existing) {
+                await supabase.from("daily_summaries").update(payload).eq("id", existing.id);
+            } else {
+                await supabase.from("daily_summaries").insert({
+                    user_id: user.id,
+                    date,
+                    earned_points: 0,
+                    possible_points: 0,
+                    final_percentage: 0,
+                    ...payload,
+                });
+            }
+        }
+
+        toast.success(isLeave ? `Marked ${dates.length} day(s) as Leave` : "Leave cancelled");
+        queryClient.invalidateQueries({ queryKey: [KEYS.summary] });
+        queryClient.invalidateQueries({ queryKey: [KEYS.stats] });
+        queryClient.invalidateQueries({ queryKey: [KEYS.leaderboard] });
+        queryClient.invalidateQueries({ queryKey: [KEYS.history] });
+    };
+
+    return { addTask, updateLog, toggleLeave: handleToggleLeave, bulkLeave: handleBulkLeave, deleteTask, followUser, unfollowUser };
 };
