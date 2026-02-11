@@ -1,16 +1,28 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, Crown, Trophy, Calendar, Zap } from "lucide-react";
-import { useProductivityLeaderboard } from "@/hooks/useProductivity";
+import { Loader2, Crown, Trophy, Calendar, Zap, Users, UserPlus, Search, Check, X } from "lucide-react";
+import { useProductivityLeaderboard, useSearchUsers, useProductivityMutations, useFollowingList } from "@/hooks/useProductivity";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const LeaderboardPage = () => {
   const [period, setPeriod] = useState<"daily" | "weekly">("daily");
-  const { data: leaderboard, isLoading } = useProductivityLeaderboard(period);
+  const [viewMode, setViewMode] = useState<"global" | "following">("global");
+
+  const { data: leaderboard, isLoading } = useProductivityLeaderboard(period, viewMode);
   const { user } = useAuth();
+
+  // Search State
+  const [searchQuery, setSearchQuery] = useState("");
+  const { data: searchResults, isLoading: isSearching } = useSearchUsers(searchQuery);
+  const { followUser, unfollowUser } = useProductivityMutations();
+  const { data: followingList } = useFollowingList();
 
   // Filter out users with 0% score ONLY if you want to hide inactive users?
   // User said "show all members". So we keep them.
@@ -21,6 +33,14 @@ const LeaderboardPage = () => {
   // Podium order: 2nd, 1st, 3rd
   const podiumOrder = [top3[1], top3[0], top3[2]].filter(Boolean);
 
+  const handleFollow = (targetId: string) => {
+    followUser.mutate(targetId);
+  };
+
+  const handleUnfollow = (targetId: string) => {
+    unfollowUser.mutate(targetId);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -30,7 +50,7 @@ const LeaderboardPage = () => {
   }
 
   return (
-    <div className="pb-24 px-4 pt-6 max-w-2xl mx-auto space-y-8">
+    <div className="pb-24 px-4 pt-6 max-w-2xl mx-auto space-y-6">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-2">
         <h1 className="text-3xl font-extrabold flex items-center justify-center gap-2">
           <Trophy className="w-8 h-8 text-yellow-500" /> Leaderboard
@@ -39,13 +59,32 @@ const LeaderboardPage = () => {
           Compare your progress with the community
         </p>
 
-        <div className="flex justify-center pt-4">
+        <div className="flex flex-col items-center gap-4 pt-4">
           <Tabs value={period} onValueChange={(v) => setPeriod(v as "daily" | "weekly")} className="w-[300px]">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="daily">Today</TabsTrigger>
               <TabsTrigger value="weekly">Weekly</TabsTrigger>
             </TabsList>
           </Tabs>
+
+          <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
+            <Button
+              variant={viewMode === "global" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("global")}
+              className="text-xs"
+            >
+              Global
+            </Button>
+            <Button
+              variant={viewMode === "following" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("following")}
+              className="text-xs"
+            >
+              Following
+            </Button>
+          </div>
         </div>
       </motion.div>
 
@@ -92,9 +131,85 @@ const LeaderboardPage = () => {
 
       {/* List View */}
       <div className="bg-card border rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-4 bg-muted/30 border-b flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          <span className="pl-2">Rank & User</span>
-          <span className="pr-2">Score</span>
+        <div className="p-4 bg-muted/30 border-b flex items-center justify-between">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pl-2">Rank & User</span>
+
+          {viewMode === "following" && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                  <UserPlus className="w-3 h-3" /> Add Friends
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Find Friends</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search people in your circles..."
+                      className="pl-9"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+
+                  <ScrollArea className="h-[300px]">
+                    {isSearching ? (
+                      <div className="flex justify-center py-4">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : searchResults?.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        {searchQuery.length < 2 ? "Type name to search..." : "No users found in your circles."}
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {searchResults?.map(result => {
+                          const isFollowing = followingList?.includes(result.user_id);
+                          return (
+                            <div key={result.user_id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="w-8 h-8">
+                                  <AvatarImage src={result.avatar_url || undefined} />
+                                  <AvatarFallback>{result.display_name?.[0]}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium text-sm">{result.display_name}</span>
+                              </div>
+                              {isFollowing ? (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 text-xs"
+                                  onClick={() => handleUnfollow(result.user_id)}
+                                  disabled={unfollowUser.isPending}
+                                >
+                                  Following
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => handleFollow(result.user_id)}
+                                  disabled={followUser.isPending}
+                                >
+                                  Follow
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pr-2">Score</span>
         </div>
 
         <div className="divide-y divide-border/50">
@@ -169,7 +284,14 @@ const LeaderboardPage = () => {
 
           {leaderboard?.length === 0 && (
             <div className="p-8 text-center text-muted-foreground">
-              No participants found.
+              {viewMode === "following" ? (
+                <div className="flex flex-col items-center gap-2">
+                  <span>You aren't following anyone yet.</span>
+                  <Button variant="outline" size="sm" className="h-8">Add Friends</Button>
+                </div>
+              ) : (
+                "No participants found."
+              )}
             </div>
           )}
         </div>

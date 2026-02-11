@@ -120,11 +120,79 @@ export const useChallengeStats = () => {
     });
 };
 
-// Fetch Leaderboard
-export const useProductivityLeaderboard = (period: "daily" | "weekly" = "daily") => {
+// Search users in my circles
+export const useSearchUsers = (query: string) => {
     return useQuery({
-        queryKey: [KEYS.leaderboard, period],
+        queryKey: ["search_users", query],
         queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Not authenticated");
+
+            if (!query || query.length < 2) return [];
+
+            // 1. Find circles I am in
+            const { data: myCircles } = await supabase
+                .from("circle_members")
+                .select("circle_id")
+                .eq("user_id", user.id);
+
+            if (!myCircles || myCircles.length === 0) return [];
+            const circleIds = myCircles.map(c => c.circle_id);
+
+            // 2. Find members of those circles who match the query
+            // This is a bit complex in Supabase without a join function or view
+            // Strategy: Get all members of my circles, then filter by profile display name
+            // Limit to avoid perf issues.
+
+            // Get all user_ids in my circles
+            const { data: circleMembers } = await supabase
+                .from("circle_members")
+                .select("user_id")
+                .in("circle_id", circleIds);
+
+            if (!circleMembers) return [];
+            const memberIds = [...new Set(circleMembers.map(m => m.user_id).filter(id => id !== user.id))];
+
+            if (memberIds.length === 0) return [];
+
+            // Search profiles
+            const { data: profiles } = await supabase
+                .from("profiles")
+                .select("user_id, display_name, avatar_url")
+                .in("user_id", memberIds)
+                .ilike("display_name", `%${query}%`)
+                .limit(10);
+
+            return profiles || [];
+        },
+        enabled: query.length >= 2
+    });
+};
+
+// Check who I follow
+export const useFollowingList = () => {
+    return useQuery({
+        queryKey: ["following_list"],
+        queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return [];
+
+            const { data } = await supabase
+                .from("user_follows")
+                .select("following_id")
+                .eq("follower_id", user.id);
+
+            return data?.map(f => f.following_id) || [];
+        }
+    });
+}
+
+// Fetch Leaderboard
+export const useProductivityLeaderboard = (period: "daily" | "weekly" = "daily", filter: "global" | "following" = "global") => {
+    return useQuery({
+        queryKey: [KEYS.leaderboard, period, filter],
+        queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
             const today = new Date();
             const dateStr = format(today, "yyyy-MM-dd");
             let startDate = dateStr;
@@ -135,14 +203,35 @@ export const useProductivityLeaderboard = (period: "daily" | "weekly" = "daily")
                 startDate = format(start, "yyyy-MM-dd");
             }
 
-            // 1. Get all profiles (to show everyone)
-            const { data: profiles, error: profilesError } = await supabase
+            // Determine which users to fetch
+            let targetUserIds: string[] = [];
+
+            if (filter === "following" && user) {
+                // Get following list + self
+                const { data: follows } = await supabase
+                    .from("user_follows")
+                    .select("following_id")
+                    .eq("follower_id", user.id);
+
+                targetUserIds = follows?.map(f => f.following_id) || [];
+                targetUserIds.push(user.id);
+            }
+
+            // 1. Get profiles
+            let profilesQuery = supabase
                 .from("profiles")
                 .select("user_id, display_name, avatar_url");
 
+            if (filter === "following" && targetUserIds.length > 0) {
+                profilesQuery = profilesQuery.in("user_id", targetUserIds);
+            } else if (filter === "following" && targetUserIds.length === 0) {
+                return []; // Following no one
+            }
+
+            const { data: profiles, error: profilesError } = await profilesQuery;
             if (profilesError) throw profilesError;
 
-            // 2. Get summaries for the period
+            // 2. Get summaries
             const { data: summaries, error: summariesError } = await supabase
                 .from("daily_summaries")
                 .select("*")
@@ -157,28 +246,19 @@ export const useProductivityLeaderboard = (period: "daily" | "weekly" = "daily")
 
                 let score = 0;
                 let isLeave = false;
-                let daysCounted = 0;
 
                 if (period === "daily") {
                     const todaySummary = userSummaries.find(s => s.date === dateStr);
                     score = todaySummary?.final_percentage || 0;
                     isLeave = todaySummary?.is_leave || false;
                 } else {
-                    // Weekly: Average of final_percentage for non-leave days
-                    // If all days are leave, score 0? Or maybe hide?
-                    // User said: "if somone is on leave... it should not show as that peosion has not worked"
-                    // i.e. Don't penalize.
-
                     const activeDays = userSummaries.filter(s => !s.is_leave);
                     if (activeDays.length > 0) {
                         const totalPct = activeDays.reduce((sum, s) => sum + (s.final_percentage || 0), 0);
                         score = totalPct / activeDays.length;
                     } else {
-                        score = 0; // Or handle as special case
+                        score = 0;
                     }
-
-                    // Allow leave flag if today is leave? Or if strictly all week leave?
-                    // Let's set leave flag if Today is leave, for display purposes.
                     const todaySummary = userSummaries.find(s => s.date === dateStr);
                     isLeave = todaySummary?.is_leave || false;
                 }
@@ -192,7 +272,6 @@ export const useProductivityLeaderboard = (period: "daily" | "weekly" = "daily")
                 };
             });
 
-            // Sort by score desc
             return leaderboard.sort((a, b) => b.final_percentage - a.final_percentage);
         },
     });
@@ -240,7 +319,7 @@ export const useProductivityMutations = () => {
             queryClient.invalidateQueries({ queryKey: [KEYS.tasks, vars.date] });
             queryClient.invalidateQueries({ queryKey: [KEYS.summary, vars.date] });
             queryClient.invalidateQueries({ queryKey: [KEYS.stats] });
-            queryClient.invalidateQueries({ queryKey: [KEYS.history] }); // History might update
+            queryClient.invalidateQueries({ queryKey: [KEYS.history] });
         },
         onError: (error) => toast.error(`Failed to update progress: ${error.message}`),
     });
@@ -290,10 +369,50 @@ export const useProductivityMutations = () => {
             toast.success(isLeave ? "Marked as Leave" : "Marked as Active");
             queryClient.invalidateQueries({ queryKey: [KEYS.summary, date] });
             queryClient.invalidateQueries({ queryKey: [KEYS.stats] });
-            queryClient.invalidateQueries({ queryKey: [KEYS.leaderboard] }); // Affects leaderboard
+            queryClient.invalidateQueries({ queryKey: [KEYS.leaderboard] });
             queryClient.invalidateQueries({ queryKey: [KEYS.history] });
         }
     };
 
-    return { addTask, updateLog, toggleLeave: handleToggleLeave };
+    const followUser = useMutation({
+        mutationFn: async (userId: string) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Not authenticated");
+
+            const { error } = await supabase.from("user_follows").insert({
+                follower_id: user.id,
+                following_id: userId
+            });
+
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["following_list"] });
+            queryClient.invalidateQueries({ queryKey: [KEYS.leaderboard] });
+            toast.success("User added to your leaderboard");
+        },
+        onError: (e) => toast.error("Failed to follow user")
+    });
+
+    const unfollowUser = useMutation({
+        mutationFn: async (userId: string) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Not authenticated");
+
+            const { error } = await supabase.from("user_follows").delete()
+                .eq("follower_id", user.id)
+                .eq("following_id", userId);
+
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["following_list"] });
+            queryClient.invalidateQueries({ queryKey: [KEYS.leaderboard] });
+            toast.success("User removed from your leaderboard");
+        },
+        onError: (e) => toast.error("Failed to unfollow user")
+    });
+
+
+    return { addTask, updateLog, toggleLeave: handleToggleLeave, followUser, unfollowUser };
 };
