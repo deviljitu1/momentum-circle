@@ -87,6 +87,36 @@ export type Database = {
           },
         ]
       }
+      challenge_stats: {
+        Row: {
+          best_streak: number
+          created_at: string
+          id: string
+          last_success_date: string | null
+          streak_days: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_streak?: number
+          created_at?: string
+          id?: string
+          last_success_date?: string | null
+          streak_days?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_streak?: number
+          created_at?: string
+          id?: string
+          last_success_date?: string | null
+          streak_days?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       circle_members: {
         Row: {
           circle_id: string
@@ -244,6 +274,48 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_summaries: {
+        Row: {
+          created_at: string
+          date: string
+          earned_points: number
+          final_percentage: number
+          id: string
+          is_leave: boolean
+          leave_reason: string | null
+          leave_type: string | null
+          possible_points: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          earned_points?: number
+          final_percentage?: number
+          id?: string
+          is_leave?: boolean
+          leave_reason?: string | null
+          leave_type?: string | null
+          possible_points?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          earned_points?: number
+          final_percentage?: number
+          id?: string
+          is_leave?: boolean
+          leave_reason?: string | null
+          leave_type?: string | null
+          possible_points?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       focus_sessions: {
         Row: {
           duration_seconds: number
@@ -351,6 +423,44 @@ export type Database = {
         }
         Relationships: []
       }
+      task_logs: {
+        Row: {
+          actual_value: number | null
+          calculated_points: number
+          completed: boolean | null
+          created_at: string
+          date: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          actual_value?: number | null
+          calculated_points?: number
+          completed?: boolean | null
+          created_at?: string
+          date: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          actual_value?: number | null
+          calculated_points?: number
+          completed?: boolean | null
+          created_at?: string
+          date?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           category: string
@@ -411,6 +521,27 @@ export type Database = {
           id?: string
           unlocked_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
         }
         Relationships: []
       }
