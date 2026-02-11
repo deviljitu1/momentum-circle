@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ConsistencyCalendar from "@/components/productivity/ConsistencyCalendar";
+import LeaveSummaryCard from "@/components/insights/LeaveSummaryCard";
 
 const InsightsPage = () => {
   const { user, profile } = useAuth();
@@ -152,6 +153,9 @@ const InsightsPage = () => {
           >
             <ConsistencyCalendar />
           </motion.div>
+
+          {/* Leave Summary */}
+          <LeaveSummaryCard />
 
           {/* Step Tracking Chart */}
           <motion.div
