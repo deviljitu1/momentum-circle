@@ -1,76 +1,124 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+
+export interface StepData {
+  id: string;
+  steps: number;
+  goal: number;
+  date: string;
+  updated_at: string;
+}
+
+export interface LeaderboardEntry {
+  user_id: string;
+  steps: number;
+  profile: {
+    display_name: string;
+    avatar_url: string;
+  } | null;
+}
 
 export const useSteps = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const today = new Date().toISOString().split("T")[0];
 
-  const { data: todaySteps, isLoading } = useQuery({
+  // Fetch today's steps with auto-refresh every 60s
+  const { data: todaySteps, isLoading, isError, refetch } = useQuery({
     queryKey: ["daily_steps", user?.id, today],
     queryFn: async () => {
       if (!user) return null;
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("daily_steps")
         .select("*")
         .eq("user_id", user.id)
         .eq("date", today)
         .maybeSingle();
+
       if (error) throw error;
-      return data as { id: string; steps: number; goal: number; date: string } | null;
+      return data as unknown as StepData | null;
     },
     enabled: !!user,
+    refetchInterval: 60000, // Auto refresh every 60s
   });
 
+  // Fetch weekly history
   const { data: weeklySteps = [] } = useQuery({
     queryKey: ["weekly_steps", user?.id],
     queryFn: async () => {
       if (!user) return [];
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 6);
-      const { data, error } = await (supabase as any)
+
+      const { data, error } = await supabase
         .from("daily_steps")
         .select("*")
         .eq("user_id", user.id)
         .gte("date", startDate.toISOString().split("T")[0])
         .lte("date", today)
-        .order("date");
+        .order("date", { ascending: true });
+
       if (error) throw error;
-      return (data || []) as { id: string; steps: number; goal: number; date: string }[];
+      return (data || []) as unknown as StepData[];
     },
     enabled: !!user,
+    refetchInterval: 60000,
   });
 
-  const logSteps = useMutation({
-    mutationFn: async (steps: number) => {
-      if (!user) throw new Error("Not authenticated");
+  // Fetch Leaderboard (Global for today)
+  const { data: leaderboard = [] } = useQuery({
+    queryKey: ["steps_leaderboard", today],
+    queryFn: async () => {
+      // 1. Fetch top 10 steps
+      // Order by steps desc
+      const { data: stepsData, error: stepsError } = await supabase
+        .from("daily_steps")
+        .select("user_id, steps")
+        .eq("date", today)
+        .order("steps", { ascending: false })
+        .limit(10);
 
-      if (todaySteps) {
-        const { error } = await (supabase as any)
-          .from("daily_steps")
-          .update({ steps })
-          .eq("id", todaySteps.id);
-        if (error) throw error;
-      } else {
-        const { error } = await (supabase as any)
-          .from("daily_steps")
-          .insert({ user_id: user.id, date: today, steps });
-        if (error) throw error;
+      if (stepsError) {
+        console.error("Error fetching steps leaderboard:", stepsError);
+        return [];
       }
+
+      if (!stepsData || stepsData.length === 0) return [];
+
+      const userIds = stepsData.map((s: any) => s.user_id);
+
+      // 2. Fetch profiles. Assuming 'user_id' column in profiles matches auth.uid
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .in("user_id", userIds);
+
+      if (profilesError) {
+        console.error("Error fetching profiles for leaderboard:", profilesError);
+        // Return fallback
+        return stepsData.map((s: any) => ({
+          user_id: s.user_id,
+          steps: s.steps,
+          profile: null
+        }));
+      }
+
+      // 3. Merge
+      return stepsData.map((s: any) => {
+        const profile = profilesData?.find((p: any) => p.user_id === s.user_id);
+        return {
+          user_id: s.user_id,
+          steps: s.steps,
+          profile: profile ? {
+            display_name: profile.display_name,
+            avatar_url: profile.avatar_url
+          } : null
+        };
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["daily_steps"] });
-      queryClient.invalidateQueries({ queryKey: ["weekly_steps"] });
-      toast({ title: "Steps logged! 🚶" });
-    },
-    onError: (error: any) => {
-      toast({ title: "Error logging steps", description: error.message, variant: "destructive" });
-    },
+    refetchInterval: 60000,
   });
 
-  return { todaySteps, weeklySteps, isLoading, logSteps };
+  return { todaySteps, weeklySteps, leaderboard, isLoading, isError, refetch };
 };
