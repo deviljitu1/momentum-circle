@@ -7,6 +7,7 @@ import { useSteps } from "@/hooks/useSteps";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import ConsistencyCalendar from "@/components/productivity/ConsistencyCalendar";
 
 const InsightsPage = () => {
   const { user, profile } = useAuth();
@@ -141,8 +142,17 @@ const InsightsPage = () => {
           )}
         </motion.div>
 
-        {/* Right Column: Steps & Log */}
+        {/* Right Column: Tracking */}
         <div className="space-y-6">
+          {/* Consistency Calendar */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.25 }}
+          >
+            <ConsistencyCalendar />
+          </motion.div>
+
           {/* Step Tracking Chart */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}

@@ -238,6 +238,7 @@ export const useProductivityMutations = () => {
             queryClient.invalidateQueries({ queryKey: [KEYS.summary, date] });
             queryClient.invalidateQueries({ queryKey: [KEYS.stats] });
             queryClient.invalidateQueries({ queryKey: [KEYS.leaderboard] }); // Affects leaderboard
+            queryClient.invalidateQueries({ queryKey: [KEYS.history] });
         }
     };
 
