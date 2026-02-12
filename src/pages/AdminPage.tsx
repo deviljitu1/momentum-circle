@@ -730,8 +730,8 @@ const AdminPage = () => {
                                             </div>
                                             <div>
                                                 <div className="font-medium text-sm">{member.display_name}</div>
-                                                <div className="text-[10px] text-muted-foreground font-mono">
-                                                    ID: {member.user_id}
+                                                <div className="text-[10px] text-muted-foreground font-mono" title={member.user_id}>
+                                                    ID: {member.user_id.substring(0, 8)}...
                                                 </div>
                                             </div>
                                         </div>
