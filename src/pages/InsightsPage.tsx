@@ -1,9 +1,7 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Footprints, TrendingUp, Target, RefreshCw, Loader2 } from "lucide-react";
+import { Sparkles, TrendingUp, Target, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAISuggestions } from "@/hooks/useAISuggestions";
-import { useSteps } from "@/hooks/useSteps";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,8 +11,6 @@ import LeaveSummaryCard from "@/components/insights/LeaveSummaryCard";
 const InsightsPage = () => {
   const { user, profile } = useAuth();
   const { suggestions, loading, fetchSuggestions } = useAISuggestions();
-  const { todaySteps, weeklySteps, logSteps } = useSteps();
-  const [stepInput, setStepInput] = useState("");
 
   const { data: weeklyStats = [] } = useQuery({
     queryKey: ["weekly_stats_insights", user?.id],
@@ -34,39 +30,21 @@ const InsightsPage = () => {
     enabled: !!user,
   });
 
-  const totalWeeklySteps = weeklySteps.reduce((sum, d) => sum + (d.steps || 0), 0);
-  const avgDailySteps = weeklySteps.length > 0 ? Math.round(totalWeeklySteps / weeklySteps.length) : 0;
   const totalWeeklyHours = weeklyStats.reduce((sum, d) => sum + Number(d.hours_focused || 0), 0);
   const totalWeeklyTasks = weeklyStats.reduce((sum, d) => sum + (d.tasks_completed || 0), 0);
-
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-  // Build 7-day step chart
-  const stepChartData = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (6 - i));
-    const dateStr = date.toISOString().split("T")[0];
-    const dayData = weeklySteps.find(s => s.date === dateStr);
-    return {
-      day: days[date.getDay()],
-      steps: dayData?.steps || 0,
-      goal: dayData?.goal || 10000,
-    };
-  });
 
   return (
     <div className="pb-24 px-4 pt-6 max-w-6xl mx-auto space-y-6">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <h1 className="text-2xl font-extrabold">Insights</h1>
-        <p className="text-sm text-muted-foreground">AI-powered analysis & health tracking</p>
+        <p className="text-sm text-muted-foreground">AI-powered analysis & productivity tracking</p>
       </motion.div>
 
       {/* Weekly Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {[
           { icon: TrendingUp, label: "Hours", value: `${totalWeeklyHours.toFixed(1)}h`, gradient: "gradient-primary" },
           { icon: Target, label: "Tasks", value: totalWeeklyTasks.toString(), gradient: "gradient-accent" },
-          { icon: Footprints, label: "Avg Steps", value: avgDailySteps.toLocaleString(), gradient: "gradient-success" },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -156,92 +134,6 @@ const InsightsPage = () => {
 
           {/* Leave Summary */}
           <LeaveSummaryCard />
-
-          {/* Step Tracking Chart */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-card rounded-xl p-6 border border-border/50 shadow-card"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-accent/10">
-                  <Footprints className="w-5 h-5 text-accent" />
-                </div>
-                <h3 className="font-bold text-base">Weekly Steps</h3>
-              </div>
-              <span className="text-sm font-bold bg-muted px-2 py-1 rounded-md">{totalWeeklySteps.toLocaleString()} total</span>
-            </div>
-            <div className="flex items-end justify-between gap-3 h-40">
-              {stepChartData.map((d, i) => {
-                const maxSteps = Math.max(100, ...stepChartData.map(s => s.goal), ...stepChartData.map(s => s.steps));
-                // Ensure bars have visible height even if small
-                const height = Math.max(4, (d.steps / maxSteps) * 100);
-                const goalHeight = (d.goal / maxSteps) * 100;
-                const isToday = i === 6;
-                const metGoal = d.steps >= d.goal;
-
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-2 relative group">
-                    <div className="relative w-full h-full flex items-end justify-center">
-                      {/* Background Goal Line/indicator could go here */}
-                      <motion.div
-                        initial={{ height: 0 }}
-                        animate={{ height: `${height}%` }}
-                        transition={{ delay: 0.4 + i * 0.05, duration: 0.5 }}
-                        className={`w-full rounded-t-lg absolute bottom-0 transition-all ${metGoal ? "gradient-success shadow-[0_0_10px_rgba(34,197,94,0.3)]" : isToday ? "gradient-accent shadow-[0_0_10px_rgba(249,115,22,0.3)]" : "bg-muted hover:bg-primary/20"}`}
-                      />
-                    </div>
-
-                    {/* Tooltip-like Step Count */}
-                    <div className="absolute -top-6 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-bold bg-popover text-popover-foreground px-1.5 py-0.5 rounded shadow-sm border whitespace-nowrap z-10">
-                      {d.steps.toLocaleString()}
-                    </div>
-
-                    <span className={`text-xs font-semibold ${isToday ? "text-accent" : "text-muted-foreground"}`}>{d.day}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </motion.div>
-
-          {/* Quick Log Steps */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-card rounded-xl p-6 border border-border/50 shadow-card"
-          >
-            <h3 className="font-bold text-base mb-4">Quick Log Steps</h3>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-muted-foreground">Today's Total:</p>
-              <p className="text-2xl font-bold font-mono">{(todaySteps?.steps || 0).toLocaleString()}</p>
-            </div>
-
-            <div className="flex gap-3">
-              <input
-                type="number"
-                value={stepInput}
-                onChange={(e) => setStepInput(e.target.value)}
-                placeholder="Add steps..."
-                className="flex-1 h-12 px-4 rounded-xl border border-border bg-background text-base focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
-              />
-              <Button
-                onClick={() => {
-                  const steps = parseInt(stepInput);
-                  if (!isNaN(steps) && steps >= 0) {
-                    logSteps.mutate(steps);
-                    setStepInput("");
-                  }
-                }}
-                className="gradient-primary text-primary-foreground h-12 px-6 rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl hover:scale-[1.02] transition-all"
-                disabled={!stepInput || logSteps.isPending}
-              >
-                Log
-              </Button>
-            </div>
-          </motion.div>
         </div>
       </div>
     </div>

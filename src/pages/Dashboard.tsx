@@ -4,7 +4,7 @@ import { Plus, Flame, Zap, Target, TrendingUp, Loader2, Trophy, ArrowRight, Help
 import ProgressRing from "@/components/ProgressRing";
 import FocusTimer from "@/components/FocusTimer";
 import TaskCard from "@/components/TaskCard";
-import StepTracker from "@/components/StepTracker";
+
 import AISuggestionsCard from "@/components/AISuggestionsCard";
 import { useTasks } from "@/hooks/useTasks";
 import { useAuth } from "@/contexts/AuthContext";
@@ -300,8 +300,6 @@ const Dashboard = () => {
           {/* AI Suggestions */}
           <AISuggestionsCard />
 
-          {/* Step Tracker */}
-          <StepTracker />
 
           {/* Leaderboard Summary */}
           <div id="tour-leaderboard" className="bg-card rounded-xl border border-border/50 shadow-card p-4">
