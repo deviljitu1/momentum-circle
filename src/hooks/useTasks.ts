@@ -59,18 +59,124 @@ export const useTasks = () => {
 
   const toggleTask = useMutation({
     mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
+      const newCompletedStatus = !completed;
+      const today = new Date().toISOString().split("T")[0];
+
+      // Get the task details first
+      const { data: taskData } = await supabase
+        .from("tasks")
+        .select("title, user_id")
+        .eq("id", id)
+        .single();
+
+      if (!taskData) throw new Error("Task not found");
+
+      // Update the task in the tasks table
       const { error } = await supabase
         .from("tasks")
         .update({
-          completed: !completed,
-          completed_at: !completed ? new Date().toISOString() : null
+          completed: newCompletedStatus,
+          completed_at: newCompletedStatus ? new Date().toISOString() : null
         })
         .eq("id", id);
 
       if (error) throw error;
+
+      // Update both old and new productivity tracking systems
+      if (user) {
+        // 1. Update daily_stats (old leaderboard system)
+        const { data: existingStats } = await supabase
+          .from("daily_stats")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("date", today)
+          .maybeSingle();
+
+        const tasksCompletedDelta = newCompletedStatus ? 1 : -1;
+        const pointsDelta = newCompletedStatus ? 10 : -10;
+
+        if (existingStats) {
+          await supabase
+            .from("daily_stats")
+            .update({
+              tasks_completed: Math.max(0, (existingStats.tasks_completed || 0) + tasksCompletedDelta),
+              points: Math.max(0, (existingStats.points || 0) + pointsDelta),
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", existingStats.id);
+        } else {
+          await supabase
+            .from("daily_stats")
+            .insert({
+              user_id: user.id,
+              date: today,
+              tasks_completed: newCompletedStatus ? 1 : 0,
+              points: newCompletedStatus ? 10 : 0,
+              hours_focused: 0
+            });
+        }
+
+        // 2. Update productivity system (new leaderboard system)
+        // Directly update daily_summaries instead of creating task_logs
+        // This avoids schema conflicts with the tasks table
+        const { data: existingSummary } = await supabase
+          .from("daily_summaries")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("date", today)
+          .maybeSingle();
+
+        // Count total tasks for the user
+        const { count: totalTasks } = await supabase
+          .from("tasks")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id);
+
+        // Count completed tasks for today
+        const { count: completedTasks } = await supabase
+          .from("tasks")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("completed", true);
+
+        const tasksCount = totalTasks || 0;
+        const completedCount = completedTasks || 0;
+
+        // Calculate percentage: (completed tasks / total tasks) * 100
+        const finalPercentage = tasksCount > 0 ? (completedCount / tasksCount) * 100 : 0;
+        const earnedPoints = completedCount * 100;
+        const possiblePoints = tasksCount * 100;
+
+        if (existingSummary) {
+          // Update existing summary
+          await supabase
+            .from("daily_summaries")
+            .update({
+              earned_points: earnedPoints,
+              possible_points: possiblePoints,
+              final_percentage: finalPercentage
+            })
+            .eq("id", existingSummary.id);
+        } else {
+          // Create new summary
+          await supabase
+            .from("daily_summaries")
+            .insert({
+              user_id: user.id,
+              date: today,
+              earned_points: earnedPoints,
+              possible_points: possiblePoints,
+              final_percentage: finalPercentage,
+              is_leave: false
+            });
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["productivity_leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["productivity_summary"] });
     },
   });
 

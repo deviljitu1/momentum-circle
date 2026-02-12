@@ -228,7 +228,7 @@ export const useProductivityLeaderboard = (period: "daily" | "weekly" = "daily",
                 return []; // Following no one
             }
 
-            const { data: profiles, error: profilesError } = await profilesQuery;
+            const { data: profiles, error: profilesError } = await profilesQuery.limit(100);
             if (profilesError) throw profilesError;
 
             // 2. Get summaries
