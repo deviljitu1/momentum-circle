@@ -203,14 +203,42 @@ export const useTasks = () => {
         }
       }
     },
+    onMutate: async ({ id, completed }) => {
+      // 1. Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ["tasks", user?.id] });
+
+      // 2. Snapshot the previous value
+      const previousTasks = queryClient.getQueryData<Task[]>(["tasks", user?.id]);
+
+      // 3. Optimistically update to the new value
+      queryClient.setQueryData<Task[]>(["tasks", user?.id], (old) => {
+        if (!old) return [];
+        return old.map((task) =>
+          task.id === id
+            ? { ...task, completed: !completed, completed_at: !completed ? new Date().toISOString() : null }
+            : task
+        );
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousTasks };
+    },
+    onError: (err, newTodo, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousTasks) {
+        queryClient.setQueryData(["tasks", user?.id], context.previousTasks);
+      }
+      toast({ title: "Failed to update task", variant: "destructive" });
+    },
     onSuccess: () => {
+      // Always refetch after error or success:
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["leaderboard"] }); // Old hook maybe?
-      queryClient.invalidateQueries({ queryKey: ["productivity_leaderboard"] }); // TasksPage, LeaderboardPage
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["productivity_leaderboard"] });
       queryClient.invalidateQueries({ queryKey: ["productivity_summary"] });
-      queryClient.invalidateQueries({ queryKey: ["admin_users"] }); // Admin Page users list
-      queryClient.invalidateQueries({ queryKey: ["user_profile"] }); // Profile header/sidebar if exists
-      queryClient.invalidateQueries({ queryKey: ["profile"] }); // Common key
+      queryClient.invalidateQueries({ queryKey: ["admin_users"] });
+      queryClient.invalidateQueries({ queryKey: ["user_profile"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 
