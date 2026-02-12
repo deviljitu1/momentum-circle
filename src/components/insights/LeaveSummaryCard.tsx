@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CalendarOff, Palmtree, Stethoscope, GraduationCap, MoreHorizontal } from "lucide-react";
+import { CalendarOff, Palmtree, Stethoscope, GraduationCap, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const leaveTypeConfig: Record<string, { icon: React.ElementType; color: string }> = {
   Vacation: { icon: Palmtree, color: "text-accent" },
@@ -14,27 +17,49 @@ const leaveTypeConfig: Record<string, { icon: React.ElementType; color: string }
   Other: { icon: MoreHorizontal, color: "text-muted-foreground" },
 };
 
+type FilterMode = "all" | "monthly" | "yearly";
+
 const LeaveSummaryCard = () => {
   const { user } = useAuth();
+  const [filterMode, setFilterMode] = useState<FilterMode>("all");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  const dateRange = (() => {
+    if (filterMode === "monthly") {
+      return { start: startOfMonth(selectedDate), end: endOfMonth(selectedDate) };
+    }
+    if (filterMode === "yearly") {
+      return { start: startOfYear(selectedDate), end: endOfYear(selectedDate) };
+    }
+    return null;
+  })();
 
   const { data: leaveDays = [] } = useQuery({
-    queryKey: ["leave_history", user?.id],
+    queryKey: ["leave_history", user?.id, filterMode, dateRange?.start?.toISOString(), dateRange?.end?.toISOString()],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
+      let query = supabase
         .from("daily_summaries")
         .select("*")
         .eq("user_id", user.id)
         .eq("is_leave", true)
-        .order("date", { ascending: false })
-        .limit(100);
+        .order("date", { ascending: false });
+
+      if (dateRange) {
+        query = query
+          .gte("date", format(dateRange.start, "yyyy-MM-dd"))
+          .lte("date", format(dateRange.end, "yyyy-MM-dd"));
+      } else {
+        query = query.limit(100);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
     enabled: !!user,
   });
 
-  // Breakdown by type
   const typeCounts: Record<string, number> = {};
   leaveDays.forEach((d) => {
     const type = d.leave_type || "Other";
@@ -42,6 +67,22 @@ const LeaveSummaryCard = () => {
   });
 
   const recentLeaves = leaveDays.slice(0, 5);
+
+  const navigatePeriod = (direction: -1 | 1) => {
+    setSelectedDate((prev) => {
+      const d = new Date(prev);
+      if (filterMode === "monthly") d.setMonth(d.getMonth() + direction);
+      else d.setFullYear(d.getFullYear() + direction);
+      return d;
+    });
+  };
+
+  const periodLabel =
+    filterMode === "monthly"
+      ? format(selectedDate, "MMMM yyyy")
+      : filterMode === "yearly"
+      ? format(selectedDate, "yyyy")
+      : "All Time";
 
   return (
     <motion.div
@@ -60,6 +101,29 @@ const LeaveSummaryCard = () => {
         </div>
         <span className="ml-auto text-2xl font-extrabold">{leaveDays.length}</span>
         <span className="text-xs text-muted-foreground">days</span>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="mb-4 space-y-2">
+        <Tabs value={filterMode} onValueChange={(v) => setFilterMode(v as FilterMode)}>
+          <TabsList className="w-full h-8">
+            <TabsTrigger value="all" className="text-xs flex-1">All</TabsTrigger>
+            <TabsTrigger value="monthly" className="text-xs flex-1">Monthly</TabsTrigger>
+            <TabsTrigger value="yearly" className="text-xs flex-1">Yearly</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {filterMode !== "all" && (
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigatePeriod(-1)}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span className="text-sm font-semibold">{periodLabel}</span>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigatePeriod(1)}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Type breakdown */}
@@ -83,7 +147,7 @@ const LeaveSummaryCard = () => {
           })}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground mb-4">No leave days recorded yet.</p>
+        <p className="text-sm text-muted-foreground mb-4">No leave days recorded for this period.</p>
       )}
 
       {/* Recent history */}

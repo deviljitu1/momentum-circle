@@ -27,7 +27,7 @@ export interface CircleMember {
 }
 
 export const useCircles = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -157,7 +157,7 @@ export const useCircles = () => {
         circle_id: circle.id,
         activity_type: "joined_circle",
         title: `Joined ${circle.name}`,
-        description: "A new member joined the circle!",
+        description: `${profile?.display_name || "A new member"} joined the circle!`,
         points_earned: 25,
       });
 

@@ -22,18 +22,19 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        # cache: gradle (Disabled due to service outage)
+
+    - name: Make gradlew executable
+      working-directory: android-health-connect
+      run: chmod +x gradlew
 
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
-        gradle-version: 8.5 
-        cache-disabled: true # Force disable cache due to outage
+        cache-disabled: true
 
     - name: Build with Gradle
       working-directory: android-health-connect
-      # Use `gradle` command instead of wrapper if wrapper script fails or is missing executable permission
-      run: gradle assembleDebug 
+      run: ./gradlew assembleDebug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
