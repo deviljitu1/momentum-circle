@@ -147,6 +147,7 @@ export const useTasks = () => {
         const earnedPoints = completedCount * 100;
         const possiblePoints = tasksCount * 100;
 
+        // Update daily_summaries (for Leaderboard)
         if (existingSummary) {
           // Update existing summary
           await supabase
@@ -170,13 +171,46 @@ export const useTasks = () => {
               is_leave: false
             });
         }
+
+        // 3. Update profiles (for XP/Level display)
+        // Add 15 XP for completing a task, remove 15 if unchecking
+        // Also update total tasks completed count
+        const xpDelta = newCompletedStatus ? 15 : -15;
+        const itemsCompletedDelta = newCompletedStatus ? 1 : -1;
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("xp, tasks_completed, level")
+          .eq("user_id", user.id)
+          .single();
+
+        if (profile) {
+          const newXp = Math.max(0, (profile.xp || 0) + xpDelta);
+          const newTasksCompleted = Math.max(0, (profile.tasks_completed || 0) + itemsCompletedDelta);
+
+          // Simple level calculation: Level up every 100 XP
+          const newLevel = Math.floor(newXp / 100) + 1;
+
+          await supabase
+            .from("profiles")
+            .update({
+              xp: newXp,
+              tasks_completed: newTasksCompleted,
+              level: newLevel,
+              last_active_date: today
+            })
+            .eq("user_id", user.id);
+        }
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
-      queryClient.invalidateQueries({ queryKey: ["productivity_leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] }); // Old hook maybe?
+      queryClient.invalidateQueries({ queryKey: ["productivity_leaderboard"] }); // TasksPage, LeaderboardPage
       queryClient.invalidateQueries({ queryKey: ["productivity_summary"] });
+      queryClient.invalidateQueries({ queryKey: ["admin_users"] }); // Admin Page users list
+      queryClient.invalidateQueries({ queryKey: ["user_profile"] }); // Profile header/sidebar if exists
+      queryClient.invalidateQueries({ queryKey: ["profile"] }); // Common key
     },
   });
 
