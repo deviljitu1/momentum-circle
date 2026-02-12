@@ -547,28 +547,109 @@ const AdminPage = () => {
                 </DialogContent>
             </Dialog >
 
-            {/* Add Member Dialog */}
-            < Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen} >
-                <DialogContent>
+            <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
+                <DialogContent className="max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Add Member to {selectedCircleForMember?.name}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 pt-4">
-                        <div className="text-sm text-muted-foreground">
-                            Copy the <strong>User ID</strong> from the Users table and paste it here.
-                        </div>
-                        <div className="space-y-2">
-                            <Label>User ID</Label>
+                        <p className="text-sm text-muted-foreground">
+                            Search and add users who are not yet in this circle.
+                        </p>
+
+                        {/* Search Input */}
+                        <div className="relative">
+                            <Users className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
                             <Input
-                                placeholder="e.g. 523..."
-                                value={newMemberId}
+                                placeholder="Search by name or short ID..."
+                                value={newMemberId} // Reusing this state for search query
                                 onChange={(e) => setNewMemberId(e.target.value)}
+                                className="pl-9"
                             />
                         </div>
-                        <Button onClick={handleSaveMember} className="w-full">Add Member</Button>
+
+                        {/* User List */}
+                        <div className="border rounded-md overflow-hidden max-h-[300px] overflow-y-auto bg-muted/10">
+                            {usersLoading ? (
+                                <div className="p-4 flex justify-center">
+                                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                                </div>
+                            ) : (
+                                <div className="divide-y">
+                                    {allUsers
+                                        ?.filter((u: any) => {
+                                            // 1. Must not be in the current circle
+                                            const isInCircle = u.joined_circles?.some((c: any) => c.id === selectedCircleForMember?.id);
+                                            if (isInCircle) return false;
+
+                                            // 2. Filter by search query (Name or Short ID)
+                                            if (!newMemberId) return true;
+                                            const query = newMemberId.toLowerCase();
+                                            const shortId = u.user_id.substring(0, 8).toLowerCase();
+                                            return (
+                                                u.display_name?.toLowerCase().includes(query) ||
+                                                shortId.includes(query)
+                                            );
+                                        })
+                                        .map((u: any) => (
+                                            <div key={u.user_id} className="p-3 flex items-center justify-between hover:bg-muted/50 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary border border-primary/20">
+                                                        {u.display_name?.[0]?.toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-medium text-sm">{u.display_name}</div>
+                                                        <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
+                                                            ID: <span className="bg-muted px-1 rounded text-foreground">{u.user_id.substring(0, 8).toUpperCase()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    size="sm"
+                                                    variant="secondary"
+                                                    className="h-7 text-xs gap-1 hover:bg-primary hover:text-primary-foreground"
+                                                    onClick={() => {
+                                                        addMemberToCircle.mutate({
+                                                            circleId: selectedCircleForMember.id,
+                                                            userId: u.user_id
+                                                        }, {
+                                                            onSuccess: () => {
+                                                                toast({ title: `Added ${u.display_name} to circle!` });
+                                                                // Don't close immediately so they can add more
+                                                                // But we triggers a re-render because 'allUsers' query invalidation might be needed 
+                                                                // typically handled by the mutation onSuccess in useAdmin
+                                                            }
+                                                        });
+                                                    }}
+                                                    disabled={addMemberToCircle.isPending}
+                                                >
+                                                    {addMemberToCircle.isPending ? (
+                                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <Plus className="w-3 h-3" /> Add
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        ))}
+
+                                    {/* Empty State */}
+                                    {allUsers?.filter((u: any) => !u.joined_circles?.some((c: any) => c.id === selectedCircleForMember?.id)).length === 0 && (
+                                        <div className="p-8 text-center text-muted-foreground text-sm">
+                                            All users are already in this circle!
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end pt-2">
+                            <Button variant="outline" onClick={() => setAddMemberOpen(false)}>Done</Button>
+                        </div>
                     </div>
                 </DialogContent>
-            </Dialog >
+            </Dialog>
 
             {/* Add User Dialog */}
             < Dialog open={addUserOpen} onOpenChange={setAddUserOpen} >
