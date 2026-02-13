@@ -16,7 +16,6 @@ import AdminPage from "./pages/AdminPage";
 import HistoryPage from "./pages/HistoryPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
-import SchedulePage from "./pages/SchedulePage";
 
 const queryClient = new QueryClient();
 
@@ -115,14 +114,6 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <HistoryPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/schedule"
-          element={
-            <ProtectedRoute>
-              <SchedulePage />
             </ProtectedRoute>
           }
         />
