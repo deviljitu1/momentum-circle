@@ -18,6 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import PersonalAIChat from "@/components/PersonalAIChat";
 
 const Dashboard = () => {
   const { user, profile } = useAuth();
@@ -434,6 +435,7 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+      <PersonalAIChat />
     </div>
   );
 };
