@@ -261,6 +261,13 @@ const Dashboard = () => {
             {showTimer ? "Back to Overview" : "🎯 Start Focus Session"}
           </Button>
 
+          <Button
+            onClick={() => navigate("/wellness")}
+            className="w-full rounded-xl h-14 bg-gradient-to-r from-teal-500 to-emerald-500 text-white border-0 text-lg font-bold shadow-lg shadow-teal-500/20 hover:shadow-xl hover:scale-[1.02] transition-all"
+          >
+            🌿 Wellness Break
+          </Button>
+
           {/* Weekly Chart */}
           <motion.div
             id="tour-activity"

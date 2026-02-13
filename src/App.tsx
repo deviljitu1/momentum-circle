@@ -16,6 +16,7 @@ import AdminPage from "./pages/AdminPage";
 import HistoryPage from "./pages/HistoryPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
+import WellnessPage from "./pages/WellnessPage";
 
 const queryClient = new QueryClient();
 
@@ -114,6 +115,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <HistoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wellness"
+          element={
+            <ProtectedRoute>
+              <WellnessPage />
             </ProtectedRoute>
           }
         />
