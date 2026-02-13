@@ -261,6 +261,14 @@ const Dashboard = () => {
             {showTimer ? "Back to Overview" : "🎯 Start Focus Session"}
           </Button>
 
+          <Button
+            onClick={() => navigate("/schedule")}
+            variant="outline"
+            className="w-full rounded-xl h-14 border-2 border-primary/20 hover:border-primary/50 text-lg font-bold shadow-sm hover:shadow-md transition-all"
+          >
+            📅 Schedule Meeting
+          </Button>
+
           {/* Weekly Chart */}
           <motion.div
             id="tour-activity"
