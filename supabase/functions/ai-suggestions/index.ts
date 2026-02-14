@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -31,6 +32,7 @@ Rules:
 
 Give me personalized productivity suggestions.`;
 
+    // Attempt to use a model that handles JSON output well
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -38,7 +40,7 @@ Give me personalized productivity suggestions.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-1.5-flash", // Use flash for speed, 1.5 is generally more available
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
@@ -59,19 +61,30 @@ Give me personalized productivity suggestions.`;
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      throw new Error("AI gateway error");
+      throw new Error(`AI gateway error: ${response.status}`);
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "[]";
-    
+
     // Parse the JSON from the response
     let suggestions;
     try {
+      // Find JSON array anywhere in the response
       const jsonMatch = content.match(/\[[\s\S]*\]/);
-      suggestions = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
-    } catch {
-      suggestions = [{ emoji: "💡", title: "Keep going!", description: "You're making progress. Keep building your streak!" }];
+      if (jsonMatch) {
+        suggestions = JSON.parse(jsonMatch[0]);
+      } else {
+        // Fallback if model fails to return JSON array string
+        console.warn("No JSON array found in AI response:", content);
+        throw new Error("Invalid format");
+      }
+    } catch (e) {
+      console.error("JSON parsing error:", e);
+      suggestions = [
+        { emoji: "💡", title: "Keep going!", description: "You're making progress. Keep building your streak!" },
+        { emoji: "⚡", title: "Focus check", description: "Try a 25-minute focus session today!" }
+      ];
     }
 
     return new Response(JSON.stringify({ suggestions }), {
@@ -80,7 +93,8 @@ Give me personalized productivity suggestions.`;
   } catch (e) {
     console.error("ai-suggestions error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, // Return 200 with error JSON so client can handle it gracefully instead of 500
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
