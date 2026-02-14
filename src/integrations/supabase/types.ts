@@ -87,6 +87,36 @@ export type Database = {
           },
         ]
       }
+      ai_memories: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          importance: number
+          memory_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          importance?: number
+          memory_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          importance?: number
+          memory_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       challenge_stats: {
         Row: {
           best_streak: number
