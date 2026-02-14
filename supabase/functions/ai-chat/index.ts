@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -91,10 +92,10 @@ APP FEATURES YOU CAN SUGGEST:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-pro", // Creating a more capable chat experience
+        model: "google/gemini-1.5-flash", // Reverting to flash for reliability
         messages: [
           { role: "system", content: systemPrompt },
-          ...messages // Pass full conversation history
+          ...(messages || []),
         ],
       }),
     });
