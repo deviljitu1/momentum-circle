@@ -45,7 +45,7 @@ serve(async (req) => {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "google/gemini-pro", // Creating a more capable chat experience
+                model: "google/gemini-1.5-pro-latest", // Creating a more capable chat experience
                 messages: [
                     { role: "system", content: systemPrompt },
                     ...messages // Pass full conversation history

@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PersonalAIChat from "@/components/PersonalAIChat";
+import DailyWellness from "@/components/DailyWellness";
 
 const Dashboard = () => {
   const { user, profile } = useAuth();
@@ -27,6 +28,12 @@ const Dashboard = () => {
   const { data: leaderboard = [], isLoading: leaderboardLoading } = useProductivityLeaderboard("daily");
   const { categories: categoryData } = useCategories();
   const { startTour } = useTour();
+
+  const [showWellness, setShowWellness] = useState(() => {
+    // Only show if the stored date is NOT today
+    const stored = localStorage.getItem("wellness_completed_date");
+    return stored !== new Date().toDateString();
+  });
 
   const [showTimer, setShowTimer] = useState(false);
   const navigate = useNavigate();
@@ -435,6 +442,7 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+      {showWellness && <DailyWellness onComplete={() => setShowWellness(false)} />}
       <PersonalAIChat />
     </div>
   );
